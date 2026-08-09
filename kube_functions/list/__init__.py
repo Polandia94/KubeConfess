@@ -5,9 +5,11 @@ from kube_functions.list.services    import list_services, definition as service
 from kube_functions.list.permissions import list_permissions, definition as permissions_def
 from kube_functions.list.roles       import list_roles, definition as roles_def
 from kube_functions.list.clusterroles import list_clusterroles, definition as clusterroles_def
+from kube_functions.list.secrets      import list_secrets, definition as secrets_def
 
 
-definitions = [pods_def, deployments_def, namespaces_def, services_def, permissions_def, roles_def, clusterroles_def]
+
+definitions = [pods_def, deployments_def, namespaces_def, services_def, permissions_def, roles_def, clusterroles_def,secrets_def]
 
 def dispatch(name: str, args: dict, k8s=None, k8s_apps=None, k8s_auth=None, k8s_rbac=None) -> str:
     if name == "list_pods":
@@ -24,4 +26,6 @@ def dispatch(name: str, args: dict, k8s=None, k8s_apps=None, k8s_auth=None, k8s_
         return list_roles(k8s_rbac, **args)       
     if name == "list_clusterroles":               
         return list_clusterroles(k8s_rbac, **args) 
+    if name == "list_secrets":  
+        return list_secrets(k8s, k8s_apps=k8s_apps, **args) 
     return None
