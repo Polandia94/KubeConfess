@@ -1,0 +1,148 @@
+# ── Namespace ─────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-custom
+
+---
+# ── Custom Role — mixed permissions ───────────────────────────────────────────
+# Realistic "developer" role — some things make sense, some are over-permissioned
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: developer-role
+  namespace: test-custom
+rules:
+  # Fine — read workloads
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  # Risky — can exec into pods
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  # Risky — can read secrets
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  # Fine — read deployments
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list"]
+  # Dangerous — can patch deployments
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["patch", "update"]
+
+---
+# ── Custom ClusterRole — cross namespace reader ───────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cross-namespace-reader
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces"]
+    verbs: ["get", "list"]
+  # Dangerous — secrets across all namespaces
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets"]
+    verbs: ["get", "list"]
+
+---
+# ── ServiceAccounts ───────────────────────────────────────────────────────────
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: developer-sa
+  namespace: test-custom
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cross-ns-reader-sa
+  namespace: test-custom
+
+---
+# ── RoleBinding — developer role ─────────────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: developer-binding
+  namespace: test-custom
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: developer-role
+subjects:
+  - kind: ServiceAccount
+    name: developer-sa
+    namespace: test-custom
+
+---
+# ── ClusterRoleBinding — cross namespace reader ───────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cross-namespace-reader-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cross-namespace-reader
+subjects:
+  - kind: ServiceAccount
+    name: cross-ns-reader-sa
+    namespace: test-custom
+
+---
+# ── Pods running as each SA ───────────────────────────────────────────────────
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-developer
+  namespace: test-custom
+spec:
+  serviceAccountName: developer-sa
+  containers:
+    - name: app
+      image: nginx
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-cross-ns-reader
+  namespace: test-custom
+spec:
+  serviceAccountName: cross-ns-reader-sa
+  containers:
+    - name: app
+      image: nginx
+
+---
+# ── Deployment using developer SA ─────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-deployment
+  namespace: test-custom
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: app-deployment
+  template:
+    metadata:
+      labels:
+        app: app-deployment
+    spec:
+      serviceAccountName: developer-sa
+      containers:
+        - name: app
+          image: nginx

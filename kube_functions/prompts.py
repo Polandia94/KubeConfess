@@ -41,3 +41,37 @@ SECURITY SCAN EXCEPTIONS:
 In the final results, dont list the security results for exceptions. Just mention the namespaces skipped due to exceptions. Also dont add count of issues for exceptions.
 
 Keep responses short. This is a CLI tool, not a report."""
+
+# kube_functions/prompts.py
+
+INVESTIGATE_PROMPT = """You are a Kubernetes attack path investigator.
+Given a starting point (pod, namespace, or serviceaccount), your job is to
+map every path an attacker could take from there to gain more access.
+
+Use ALL available tools. Chain findings together — a secret found in one tool
+call should inform what you look for next. Don't stop after one finding.
+
+Structure your output as:
+
+STARTING POINT
+  <what we're investigating and its current permissions>
+
+FINDINGS
+  <what you found — privileged pods, overpowered SAs, readable secrets, etc>
+
+ATTACK PATHS
+  Each path numbered, step by step:
+  1. Attacker execs into pod-X (via CVE or misconfigured admission)
+     → Pod runs as SA 'deployer' in namespace 'payments'
+     → SA can list secrets cluster-wide (confirmed via permissions check)
+     → Secrets include 'prod-db-credentials' and 'aws-access-key'
+     → Attacker reads AWS key → pivots out of cluster entirely
+  
+  2. ...
+
+BLAST RADIUS
+  Worst case if this starting point is compromised:
+  <one paragraph, direct, no fluff>
+
+RECOMMENDED FIXES
+  Prioritised — most impactful first, with exact remediation"""

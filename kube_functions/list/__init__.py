@@ -6,16 +6,18 @@ from kube_functions.list.permissions import list_permissions, definition as perm
 from kube_functions.list.roles       import list_roles, definition as roles_def
 from kube_functions.list.clusterroles import list_clusterroles, definition as clusterroles_def
 from kube_functions.list.secrets      import list_secrets, definition as secrets_def
+from kube_functions.list.serviceaccounts import list_serviceaccounts, definition as sa_def
+from kube_functions.list.rolebindings    import list_rolebindings,    definition as rolebindings_def
 
 
 
-definitions = [pods_def, deployments_def, namespaces_def, services_def, permissions_def, roles_def, clusterroles_def,secrets_def]
+definitions = [pods_def, deployments_def, namespaces_def, services_def, permissions_def, roles_def, clusterroles_def,secrets_def, sa_def, rolebindings_def]
 
 def dispatch(name: str, args: dict, k8s=None, k8s_apps=None, k8s_auth=None, k8s_rbac=None) -> str:
     if name == "list_pods":
-        return list_pods(k8s, **args)
+        return list_pods(k8s, k8s_rbac=k8s_rbac, **args)
     if name == "list_deployments":                        
-        return list_deployments(k8s_apps, **args)   
+        return list_deployments(k8s_apps,k8s=k8s, k8s_rbac=k8s_rbac, **args)   
     if name == "list_namespaces":          
         return list_namespaces(k8s)    
     if name == "list_services":         
@@ -28,4 +30,8 @@ def dispatch(name: str, args: dict, k8s=None, k8s_apps=None, k8s_auth=None, k8s_
         return list_clusterroles(k8s_rbac, **args) 
     if name == "list_secrets":  
         return list_secrets(k8s, k8s_apps=k8s_apps, **args) 
+    if name == "list_serviceaccounts":
+        return list_serviceaccounts(k8s,k8s_rbac, **args)
+    if name == "list_rolebindings":
+        return list_rolebindings(k8s_rbac, **args)
     return None
