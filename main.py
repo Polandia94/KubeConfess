@@ -137,14 +137,34 @@ def parse_investigate(user_input: str):
 
 def main():
     parser = argparse.ArgumentParser(description="KubeConfess — Kubernetes AI Agent")
-    parser.add_argument("--kubeconfig", required=True, help="Path to kubeconfig file")
+    parser.add_argument("--kubeconfig", help="Path to kubeconfig file")
+    parser.add_argument("--incluster",  action="store_true",
+                        help="Run inside a pod using mounted SA token")
     args = parser.parse_args()
+
+    if not args.kubeconfig and not args.incluster:
+        console.print(
+            "  [bold red]✗[/bold red] "
+            "Provide --kubeconfig <path> or --incluster"
+        )
+        return
 
     print_banner()
 
     try:
-        k8s, k8s_apps, k8s_auth, k8s_rbac = connect(args.kubeconfig)
-        print_connection(args.kubeconfig)
+        if args.incluster:
+            k8s, k8s_apps, k8s_auth, k8s_rbac = connect(incluster=True)
+            console.print(
+                "  [bold green]✓[/bold green] [dim]Running in-cluster[/dim]\n"
+            )
+        else:
+            k8s, k8s_apps, k8s_auth, k8s_rbac = connect(
+                kubeconfig_path=args.kubeconfig
+            )
+            console.print(
+                f"  [bold green]✓[/bold green] [dim]Connected via[/dim] "
+                f"[cyan]{args.kubeconfig}[/cyan]\n"
+            )
     except Exception as e:
         console.print(f"  [bold red]✗[/bold red] Failed to connect: {e}")
         return

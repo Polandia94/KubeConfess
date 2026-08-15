@@ -23,7 +23,7 @@ def dispatch(name: str, args: dict, k8s=None, k8s_apps=None, k8s_auth=None, k8s_
     if name == "list_services":         
         return list_services(k8s, **args)
     if name == "list_permissions":
-        return list_permissions(k8s_auth, **args)
+        return list_permissions(k8s_auth, k8s, **args)
     if name == "list_roles":          
         return list_roles(k8s_rbac, **args)       
     if name == "list_clusterroles":               
