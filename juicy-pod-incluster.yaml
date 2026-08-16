@@ -1,0 +1,236 @@
+# ── Namespace ─────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-incluster
+
+---
+# ── Secrets — sensitive data to be discovered ─────────────────────────────────
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-credentials
+  namespace: test-incluster
+type: Opaque
+stringData:
+  username: prod-admin
+  password: "Sup3rS3cr3tDBPass!"
+  connection_string: "postgresql://prod-admin:Sup3rS3cr3tDBPass!@prod-db.internal:5432/payments"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-access-keys
+  namespace: test-incluster
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
+  AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  AWS_DEFAULT_REGION: "us-east-1"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-token
+  namespace: test-incluster
+type: Opaque
+stringData:
+  token: "ghp_exampleGithubTokenWithRepoAccess123"
+  webhook_secret: "wh_s3cr3t_example"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: stripe-api-key
+  namespace: test-incluster
+type: Opaque
+stringData:
+  secret_key: "sk_live_exampleStripeSecretKey123456"
+  webhook_secret: "whsec_exampleStripeWebhookSecret"
+
+---
+# ── ServiceAccount — over-privileged ─────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: juicy-sa
+  namespace: test-incluster
+# automount is true by default — token will be mounted
+
+---
+# ── ClusterRole — dangerous permissions ──────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: juicy-clusterrole
+rules:
+  # can read secrets cluster-wide — critical
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  # can exec into any pod
+  - apiGroups: [""]
+    resources: ["pods", "pods/exec"]
+    verbs: ["get", "list", "create"]
+  # can read everything
+  - apiGroups: [""]
+    resources: ["pods", "services", "namespaces",
+                "configmaps", "serviceaccounts", "nodes"]
+    verbs: ["get", "list"]
+  # can read deployments
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets", "statefulsets"]
+    verbs: ["get", "list"]
+  # can read RBAC — lets attacker map the cluster
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "clusterroles",
+                "rolebindings", "clusterrolebindings"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: juicy-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: juicy-clusterrole
+subjects:
+  - kind: ServiceAccount
+    name: juicy-sa
+    namespace: test-incluster
+
+---
+# ── The juicy pod ─────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Pod
+metadata:
+  name: juicy-pod
+  namespace: test-incluster
+  labels:
+    app: juicy-pod
+    env: production
+    team: payments
+spec:
+  serviceAccountName: juicy-sa
+
+  # no security context — runs as root
+  containers:
+    - name: app
+      image: alpine:latest
+      command: ["/bin/sh", "-c", "sleep 86400"]
+
+      # no securityContext — runs as root, no restrictions
+
+      # secrets injected as env vars — bad practice, easily discovered
+      env:
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: password
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: username
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: aws-access-keys
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aws-access-keys
+              key: AWS_SECRET_ACCESS_KEY
+        - name: STRIPE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: stripe-api-key
+              key: secret_key
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-token
+              key: token
+        # literal env var — not even using a secret
+        - name: INTERNAL_API_KEY
+          value: "int_api_k3y_sup3r_s3cr3t_dont_share"
+        - name: APP_ENV
+          value: "production"
+        - name: DATABASE_URL
+          value: "postgresql://prod-admin:Sup3rS3cr3tDBPass!@prod-db.internal:5432/payments"
+
+      # secret mounted as volume too
+      volumeMounts:
+        - name: aws-keys
+          mountPath: /etc/aws
+          readOnly: true
+        - name: github-token
+          mountPath: /etc/github
+          readOnly: true
+        # host path mount — can read node filesystem
+        - name: host-tmp
+          mountPath: /host-tmp
+
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "64Mi"
+
+  volumes:
+    - name: aws-keys
+      secret:
+        secretName: aws-access-keys
+    - name: github-token
+      secret:
+        secretName: github-token
+    # host path mount
+    - name: host-tmp
+      hostPath:
+        path: /tmp
+        type: Directory
+
+  restartPolicy: Always
+
+---
+# ── Deployment also using juicy SA ───────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-api
+  namespace: test-incluster
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payments-api
+  template:
+    metadata:
+      labels:
+        app: payments-api
+    spec:
+      serviceAccountName: juicy-sa
+      containers:
+        - name: payments-api
+          image: alpine:latest
+          command: ["/bin/sh", "-c", "sleep 86400"]
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stripe-api-key
+                  key: secret_key
+            - name: DATABASE_URL
+              value: "postgresql://prod-admin:Sup3rS3cr3tDBPass!@prod-db.internal:5432/payments"
