@@ -149,11 +149,6 @@ spec:
             secretKeyRef:
               name: aws-access-keys
               key: AWS_SECRET_ACCESS_KEY
-        - name: STRIPE_SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: stripe-api-key
-              key: secret_key
         - name: GITHUB_TOKEN
           valueFrom:
             secretKeyRef:
