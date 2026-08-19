@@ -8,10 +8,12 @@ from kube_functions.list.clusterroles import list_clusterroles, definition as cl
 from kube_functions.list.secrets      import list_secrets, definition as secrets_def
 from kube_functions.list.serviceaccounts import list_serviceaccounts, definition as sa_def
 from kube_functions.list.rolebindings    import list_rolebindings,    definition as rolebindings_def
+from kube_functions.list.clusterrolebindings import list_clusterrolebindings, definition as crb_def  # ← add
 
 
 
-definitions = [pods_def, deployments_def, namespaces_def, services_def, permissions_def, roles_def, clusterroles_def,secrets_def, sa_def, rolebindings_def]
+
+definitions = [pods_def, deployments_def, namespaces_def, services_def, permissions_def, roles_def, clusterroles_def,secrets_def, sa_def, rolebindings_def, crb_def]
 
 def dispatch(name: str, args: dict, k8s=None, k8s_apps=None, k8s_auth=None, k8s_rbac=None) -> str:
     if name == "list_pods":
@@ -34,4 +36,6 @@ def dispatch(name: str, args: dict, k8s=None, k8s_apps=None, k8s_auth=None, k8s_
         return list_serviceaccounts(k8s,k8s_rbac, **args)
     if name == "list_rolebindings":
         return list_rolebindings(k8s_rbac, **args)
+    if name == "list_clusterrolebindings":         
+        return list_clusterrolebindings(k8s_rbac)   
     return None

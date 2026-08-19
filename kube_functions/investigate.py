@@ -10,6 +10,7 @@ from kube_functions.list.serviceaccounts import list_serviceaccounts
 from kube_functions.list.rolebindings   import list_rolebindings
 from kube_functions.list.roles          import list_roles
 from kube_functions.list.clusterroles   import list_clusterroles
+from kube_functions.list.clusterrolebindings import list_clusterrolebindings
 from kube_functions.list.secrets        import list_secrets
 from kube_functions.list.permissions    import list_permissions
 from kube_functions.security.privileged      import check_privileged_pods
@@ -71,6 +72,8 @@ def gather(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac,
 
     run("ROLEBINDINGS",
         list_rolebindings, k8s_rbac, namespace=namespace)
+    run("CLUSTERROLEBINDINGS",                      # ← add
+        list_clusterrolebindings, k8s_rbac)         # ← add
 
     run("ROLES",
         list_roles, k8s_rbac, namespace=namespace)
