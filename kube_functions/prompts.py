@@ -64,8 +64,12 @@ ATTACK PATHS
   1. pod/X → SA has secret read → secrets contain AWS key → cloud pivot
   2. pod/X → SA can exec into pods → target kube-system pods → steal admin token
 
+
 BLAST RADIUS
   Worst case in one paragraph. Be direct.
 
 RECOMMENDED FIXES
-  Most impactful first. Exact fix for each."""
+  Most impactful first. Exact fix for each.
+  
+Note: If workload itself is not vulnerable, just mention that the likely attack path is through compromising other workloads/service accounts. No need to deepdive or list into cluster findings or listing any attack paths or any blast radius. 
+  """

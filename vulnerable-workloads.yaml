@@ -1,0 +1,518 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# vulnerable-workloads.yaml
+# A deliberately misconfigured namespace for testing KubeConfess
+# Covers: privileged pods, root containers, hostpath mounts, over-privileged SAs,
+#         cluster-admin bindings, secrets in env vars, secret volumes
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Namespace ─────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vulnerable-workloads
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# SECRETS — realistic names with realistic-looking values
+# ═══════════════════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: prod-db-credentials
+  namespace: vulnerable-workloads
+type: Opaque
+stringData:
+  username: "prod_admin"
+  password: "Tr0ub4dor&3_prod"
+  host: "prod-postgres.internal:5432"
+  database: "payments"
+  connection_string: "postgresql://prod_admin:Tr0ub4dor&3_prod@prod-postgres.internal:5432/payments"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-credentials
+  namespace: vulnerable-workloads
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
+  AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  AWS_DEFAULT_REGION: "us-east-1"
+  AWS_ACCOUNT_ID: "123456789012"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-cicd-token
+  namespace: vulnerable-workloads
+type: Opaque
+stringData:
+  token: "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  org: "acme-corp"
+  webhook_secret: "wh_s3cr3t_abc123"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: stripe-keys
+  namespace: vulnerable-workloads
+type: Opaque
+stringData:
+  secret_key: "sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  publishable_key: "pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  webhook_secret: "whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: internal-api-keys
+  namespace: vulnerable-workloads
+type: Opaque
+stringData:
+  payments_api_key: "pay_int_k3y_sup3r_s3cr3t"
+  notifications_api_key: "ntf_int_k3y_sup3r_s3cr3t"
+  admin_token: "adm_tok_sup3r_s3cr3t_dont_share"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tls-certs
+  namespace: vulnerable-workloads
+type: kubernetes.io/tls
+stringData:
+  tls.crt: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCmZha2UJLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
+  tls.key: "LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpmYWtlCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg=="
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# SERVICE ACCOUNTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# SA 1 — cluster-admin level (most dangerous)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-cluster-admin
+  namespace: vulnerable-workloads
+
+---
+# SA 2 — can read secrets cluster-wide
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-secret-reader
+  namespace: vulnerable-workloads
+
+---
+# SA 3 — can exec into pods + patch deployments
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-developer
+  namespace: vulnerable-workloads
+
+---
+# SA 4 — appears safe but has dangerous namespace-scoped permissions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-app-runner
+  namespace: vulnerable-workloads
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# RBAC — CLUSTER LEVEL (most dangerous)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Binding 1 — full cluster-admin
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vuln-cluster-admin-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: sa-cluster-admin
+    namespace: vulnerable-workloads
+
+---
+# Binding 2 — cluster-wide secret read
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vuln-secret-reader-role
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods", "serviceaccounts", "namespaces"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets", "statefulsets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "clusterroles", "rolebindings", "clusterrolebindings"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vuln-secret-reader-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vuln-secret-reader-role
+subjects:
+  - kind: ServiceAccount
+    name: sa-secret-reader
+    namespace: vulnerable-workloads
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# RBAC — NAMESPACE LEVEL
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Developer role — looks reasonable but has exec + secret read + deployment patch
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: developer-role
+  namespace: vulnerable-workloads
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/exec", "pods/log"]
+    verbs: ["create", "get"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "patch", "update"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: developer-binding
+  namespace: vulnerable-workloads
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: developer-role
+subjects:
+  - kind: ServiceAccount
+    name: sa-developer
+    namespace: vulnerable-workloads
+
+---
+# App runner role — can create pods (dangerous — can mount any secret)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: app-runner-role
+  namespace: vulnerable-workloads
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "create"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings"]
+    verbs: ["create"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-runner-binding
+  namespace: vulnerable-workloads
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: app-runner-role
+subjects:
+  - kind: ServiceAccount
+    name: sa-app-runner
+    namespace: vulnerable-workloads
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# PODS — each demonstrates a different misconfiguration
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Pod 1 — privileged + root + hostpath + secrets in env + cluster-admin SA
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-fully-compromised
+  namespace: vulnerable-workloads
+  labels:
+    app: pod-fully-compromised
+    tier: backend
+spec:
+  serviceAccountName: sa-cluster-admin
+  containers:
+    - name: app
+      image: alpine:latest
+      command: ["/bin/sh", "-c", "sleep 86400"]
+      securityContext:
+        privileged: true        # container escape possible
+      env:
+        # secrets in env vars — bad practice
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: prod-db-credentials
+              key: password
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: prod-db-credentials
+              key: username
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: AWS_SECRET_ACCESS_KEY
+        - name: STRIPE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: stripe-keys
+              key: secret_key
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-cicd-token
+              key: token
+        # literal plaintext secret — worst practice
+        - name: INTERNAL_ADMIN_TOKEN
+          value: "adm_tok_hardcoded_in_manifest_oops"
+        - name: DATABASE_URL
+          value: "postgresql://prod_admin:Tr0ub4dor&3_prod@prod-postgres.internal:5432/payments"
+      volumeMounts:
+        - name: host-root
+          mountPath: /host
+        - name: aws-creds
+          mountPath: /etc/aws
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+  volumes:
+    - name: host-root
+      hostPath:
+        path: /          # full host filesystem
+        type: Directory
+    - name: aws-creds
+      secret:
+        secretName: aws-credentials
+    - name: docker-sock
+      hostPath:
+        path: /var/run/docker.sock   # runtime socket = node compromise
+
+---
+# Pod 2 — root + secret reader SA + secrets via envFrom
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-secret-harvester
+  namespace: vulnerable-workloads
+  labels:
+    app: pod-secret-harvester
+    tier: backend
+spec:
+  serviceAccountName: sa-secret-reader
+  # no securityContext — runs as root
+  containers:
+    - name: app
+      image: alpine:latest
+      command: ["/bin/sh", "-c", "sleep 86400"]
+      # envFrom pulls ALL keys from secrets as env vars
+      envFrom:
+        - secretRef:
+            name: internal-api-keys
+        - secretRef:
+            name: aws-credentials
+      env:
+        - name: STRIPE_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: stripe-keys
+              key: webhook_secret
+
+---
+# Pod 3 — developer SA + hostpath mount + running as root
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-developer
+  namespace: vulnerable-workloads
+  labels:
+    app: pod-developer
+    tier: frontend
+spec:
+  serviceAccountName: sa-developer
+  containers:
+    - name: app
+      image: alpine:latest
+      command: ["/bin/sh", "-c", "sleep 86400"]
+      # no securityContext
+      env:
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: prod-db-credentials
+              key: password
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-cicd-token
+              key: token
+      volumeMounts:
+        - name: host-etc
+          mountPath: /host-etc
+          readOnly: true
+        - name: host-kubelet
+          mountPath: /host-kubelet
+  volumes:
+    - name: host-etc
+      hostPath:
+        path: /etc
+        type: Directory
+    - name: host-kubelet
+      hostPath:
+        path: /var/lib/kubelet
+        type: Directory
+
+---
+# Pod 4 — looks safe but SA can create rolebindings (RBAC escalation)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-app-runner
+  namespace: vulnerable-workloads
+  labels:
+    app: pod-app-runner
+    tier: worker
+spec:
+  serviceAccountName: sa-app-runner
+  containers:
+    - name: app
+      image: alpine:latest
+      command: ["/bin/sh", "-c", "sleep 86400"]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000    # actually non-root — but SA is dangerous
+      env:
+        - name: PAYMENT_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: internal-api-keys
+              key: payments_api_key
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# DEPLOYMENTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Deployment 1 — payments service, cluster-admin SA, secrets in env
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-service
+  namespace: vulnerable-workloads
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payments-service
+  template:
+    metadata:
+      labels:
+        app: payments-service
+    spec:
+      serviceAccountName: sa-cluster-admin
+      containers:
+        - name: payments
+          image: alpine:latest
+          command: ["/bin/sh", "-c", "sleep 86400"]
+          # no securityContext
+          env:
+            - name: DB_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: prod-db-credentials
+                  key: connection_string
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: stripe-keys
+                  key: secret_key
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: AWS_SECRET_ACCESS_KEY
+
+---
+# Deployment 2 — CI/CD runner, secret reader SA, github token
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cicd-runner
+  namespace: vulnerable-workloads
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cicd-runner
+  template:
+    metadata:
+      labels:
+        app: cicd-runner
+    spec:
+      serviceAccountName: sa-secret-reader
+      containers:
+        - name: runner
+          image: alpine:latest
+          command: ["/bin/sh", "-c", "sleep 86400"]
+          securityContext:
+            privileged: true   # CI runners often run privileged — dangerous
+          envFrom:
+            - secretRef:
+                name: github-cicd-token
+          volumeMounts:
+            - name: host-proc
+              mountPath: /host-proc
+      volumes:
+        - name: host-proc
+          hostPath:
+            path: /proc
+            type: Directory
