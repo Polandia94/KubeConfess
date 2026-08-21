@@ -20,7 +20,8 @@ KubeConfess is a CLI AI agent that lets you interrogate your Kubernetes cluster 
 
 Built for security engineers and platform engineers who want faster cluster visibility. Under the hood it uses any OpenAI-compatible API — Claude, GPT-4, Gemini, local models via Ollama, or anything else that speaks the OpenAI chat completions format. Swap the base URL and model name in one config file.
 
-<img width="2458" height="1179" alt="kubeconfess" src="https://github.com/user-attachments/assets/7b1995ed-cf6d-47fd-8995-8474c1fddaa8" />
+<img width="2467" height="1222" alt="kubeconfess-new" src="https://github.com/user-attachments/assets/f4f9ddc9-c1b1-4a1b-a510-7fac752426af" />
+
 
 ---
 
@@ -95,7 +96,7 @@ pip install -r requirements.txt
 All config is read from environment variables — no secrets file needed:
 
 ```bash
-export ANTHROPIC_API_KEY="your-api-key-here"
+export API_KEY="your-api-key-here"
 export BASE_URL="https://api.anthropic.com/v1"   # Claude  (default)
 # export BASE_URL="https://api.openai.com/v1"    # OpenAI
 # export BASE_URL="http://localhost:11434/v1"    # Ollama  (local)
@@ -237,7 +238,7 @@ kubectl exec -it <pod> -n <namespace> -- /bin/sh
 cd /tmp/kubeconfess
 apk add --no-cache python3 py3-pip
 pip3 install -r requirements.txt --break-system-packages
-export ANTHROPIC_API_KEY=sk-ant-...
+export API_KEY=sk-ant-...
 python3 main.py --incluster
 ```
 
