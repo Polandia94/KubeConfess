@@ -112,7 +112,7 @@ python main.py --kubeconfig ~/.kube/config
 ### Run — in-cluster mode
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
+export API_KEY=sk-ant-...
 python main.py --incluster
 ```
 
@@ -204,7 +204,7 @@ The scenario: you have shell access inside a pod. No kubeconfig. You want to kno
 
 **If the pod has Python:**
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
+export API_KEY=sk-ant-...
 git clone https://github.com/arnavtripathy/KubeConfess.git
 cd KubeConfess
 pip install -r requirements.txt
@@ -222,7 +222,7 @@ cd KubeConfess
 pip3 install -r requirements.txt --break-system-packages
 
 # set API key and run
-export ANTHROPIC_API_KEY=sk-ant-...
+export API_KEY=sk-ant-...
 python3 main.py --incluster
 ```
 
@@ -256,7 +256,7 @@ kubectl run kubeconfess \
 git clone https://github.com/arnavtripathy/KubeConfess.git
 cd KubeConfess
 pip install -r requirements.txt
-export ANTHROPIC_API_KEY=sk-ant-...
+export API_KEY=sk-ant-...
 python main.py --incluster
 ```
 
