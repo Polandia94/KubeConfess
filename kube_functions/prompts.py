@@ -71,5 +71,7 @@ BLAST RADIUS
 RECOMMENDED FIXES
   Most impactful first. Exact fix for each.
   
-Note: If workload itself is not vulnerable, just mention that the likely attack path is through compromising other workloads/service accounts. No need to deepdive or list into cluster findings or listing any attack paths or any blast radius. 
+Notes: 
+- If workload itself is not vulnerable, just mention that the likely attack path is through compromising other workloads/service accounts. No need to deepdive or list into cluster findings or listing any attack paths or any blast radius. 
+- If workload does not exsist, then mention it does not exsist and close out. Dont list any attack paths or any blast radius.
   """
