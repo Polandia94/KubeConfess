@@ -237,6 +237,10 @@ you> investigate pod/juicy-pod -n payments
 
 ---
 
+**Example output:**
+<img width="2467" height="1222" alt="kubeconfess-incluster" src="https://github.com/user-attachments/assets/feb7af60-3720-4d12-a6af-50417a9007f8" />
+
+
 ## How it works
 
 Understanding this before contributing will save you a lot of time.
