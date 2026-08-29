@@ -16,6 +16,7 @@ from kube_functions.list.permissions    import list_permissions
 from kube_functions.security.privileged      import check_privileged_pods
 from kube_functions.security.root_containers import check_root_containers
 from kube_functions.security.hostpath_mounts import check_hostpath_mounts
+from kube_functions.attack.token_theft import steal_tokens
 
 
 def _parse_target(target: str) -> tuple:
@@ -119,5 +120,9 @@ def gather(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac,
 
     run("HOST PATH MOUNTS",
         check_hostpath_mounts, k8s, k8s_apps=k8s_apps, namespace=namespace)
+    
+    # ── Token theft check — Attack mode ─────────────────────────────────────────────
+    run("TOKEN THEFT — static SA tokens readable from secrets",
+        steal_tokens, k8s, namespace=namespace)
 
     return "\n".join(results)

@@ -4,12 +4,14 @@ from config.vars import API_KEY, MODEL_NAME, BASE_URL, MAX_TOKENS
 from kube_functions.prompts import SYSTEM_PROMPT
 import kube_functions.list as list_tools
 import kube_functions.security as security_tools
+import kube_functions.attack   as attack_tools
 
 client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
 definitions = [
     *list_tools.definitions,
     *security_tools.definitions,
+    *attack_tools.definitions,
 ]
 
 def dispatch(name, args, k8s, k8s_apps, k8s_auth, k8s_rbac):
@@ -17,6 +19,7 @@ def dispatch(name, args, k8s, k8s_apps, k8s_auth, k8s_rbac):
         list_tools.dispatch(name, args, k8s=k8s, k8s_apps=k8s_apps,
                             k8s_auth=k8s_auth, k8s_rbac=k8s_rbac) or
         security_tools.dispatch(name, args, k8s=k8s, k8s_apps=k8s_apps) or
+        attack_tools.dispatch(name, args, k8s=k8s, k8s_apps=k8s_apps) or
         f"Unknown tool: {name}"
     )
 
