@@ -22,7 +22,6 @@ Built for security engineers and platform engineers who want faster cluster visi
 
 <img width="2467" height="1222" alt="kubeconfess-new" src="https://github.com/user-attachments/assets/f4f9ddc9-c1b1-4a1b-a510-7fac752426af" />
 
-
 ---
 
 ## Motivation
@@ -68,6 +67,11 @@ It's also a learning project. If you've ever wanted to understand how AI agents 
 - Run inside a pod with no kubeconfig needed — uses the mounted ServiceAccount token automatically
 - Scans the pod itself: capabilities, runtime sockets, host mounts, PID namespace, cloud metadata endpoints, sensitive env vars, and credential files
 - Designed for the post-exploitation scenario: you've landed in a pod and want to know what you can do from there
+
+### Attack Capabilities (In-Cluster)
+- Token theft — finds static ServiceAccount tokens in secrets, decodes them, and outputs ready-to-use `kubectl` and `curl` commands to authenticate as that SA — including privilege escalation paths
+- Secret harvesting — decodes and dumps actual secret values (passwords, API keys, connection strings, tokens) prioritised by name and key patterns — not just key names like `list_secrets`
+- More attack modules coming soon
 
 ---
 
@@ -155,7 +159,6 @@ you> investigate sa/deployer -n staging
 **Example output:**
 <img width="2467" height="1222" alt="kubeconfess-investigate" src="https://github.com/user-attachments/assets/64f77d44-ae06-4d0e-a9a7-8433db6a6454" />
 
-
 After the report prints you stay in the chat — ask follow-up questions grounded in the findings:
 
 ```
@@ -235,11 +238,18 @@ you> investigate namespace/default
 you> investigate pod/juicy-pod -n payments
 ```
 
----
+**Attack capabilities — once inside a pod with secret read access:**
+```
+you> steal tokens from all namespaces
+you> harvest secrets from vulnerable-workloads
+you> what tokens can I steal?
+you> dump all credentials in this namespace
+```
 
 **Example output:**
 <img width="2467" height="1222" alt="kubeconfess-incluster" src="https://github.com/user-attachments/assets/feb7af60-3720-4d12-a6af-50417a9007f8" />
 
+---
 
 ## How it works
 
@@ -305,12 +315,17 @@ KubeConfess/
     │   ├── serviceaccounts.py
     │   └── secrets.py
     │
-    └── security/
-        ├── __init__.py              ← registry for security tools
-        ├── privileged.py
-        ├── root_containers.py
-        ├── hostpath_mounts.py
-        └── pod_self_scan.py         ← in-cluster pod self-enumeration
+    ├── security/
+    │   ├── __init__.py              ← registry for security tools
+    │   ├── privileged.py
+    │   ├── root_containers.py
+    │   ├── hostpath_mounts.py
+    │   └── pod_self_scan.py         ← in-cluster pod self-enumeration
+    │
+    └── attack/                      ← post-exploitation capabilities
+        ├── __init__.py              ← registry for attack tools
+        ├── steal_tokens.py          ← steal static SA tokens from secrets
+        └── harvest_secrets.py       ← decode and dump secret values
 ```
 
 ---
@@ -400,9 +415,15 @@ The one difference: security tools should follow the finding format already esta
 
 This matters because the system prompt in `prompts.py` tells the AI to expect this format and reason about severity. Consistent structure means consistent output.
 
+### Adding an attack tool
+
+Attack tools go in `kube_functions/attack/` and register in `kube_functions/attack/__init__.py`. Same two-file pattern — one function, one definition dict.
+
+Attack tools should only be called when the user explicitly requests offensive output or during investigate mode. The system prompt constrains Claude to not call them during passive audits. Keep attack tools focused — one capability per file.
+
 ### Adding a check to investigate mode
 
-If you add a new security tool and want it to run automatically during investigations, add it to the `gather()` function in `kube_functions/investigate.py`:
+If you add a new security or attack tool and want it to run automatically during investigations, add it to the `gather()` function in `kube_functions/investigate.py`:
 
 ```python
 run("YOUR NEW CHECK",
