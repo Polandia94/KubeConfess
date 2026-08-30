@@ -11,7 +11,7 @@ SA_TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 SA_NS_PATH    = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
 SENSITIVE_ENV_PATTERNS = [
-    "PASSWORD", "PASSWD", "SECRET", "TOKEN", "API_KEY", "APIKEY",
+    "PASSWORD", "PASSWD", "SECRET", "TOKEN",  "APIKEY",
     "PRIVATE_KEY", "CREDENTIALS", "AUTH", "DATABASE_URL", "DB_URL",
     "AWS_", "GCP_", "AZURE_", "GITHUB_TOKEN", "GITLAB_TOKEN", "BEARER",
 ]
