@@ -1,0 +1,90 @@
+# ── Test pod for in-cluster attack testing ────────────────────────────────────
+# Enough permissions to test attack tools, not cluster-admin
+# No root/readonly restrictions so pip and apk work
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vulnerable-namespace
+
+---
+# ServiceAccount — will have meaningful but not cluster-admin permissions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-attack-tester
+  namespace: vulnerable-namespace
+
+---
+# Role — secret read, pod list/exec, deployment read
+# Enough to demo token theft, exec targeting, secret harvest
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: attack-tester-role
+  namespace: vulnerable-namespace
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/exec", "pods/log"]
+    verbs: ["get", "list", "create"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["configmaps", "services", "namespaces"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets", "statefulsets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: attack-tester-binding
+  namespace: vulnerable-namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: attack-tester-role
+subjects:
+  - kind: ServiceAccount
+    name: sa-attack-tester
+    namespace: vulnerable-namespace
+
+---
+# Pod — no root/readonly restrictions, writable filesystem
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-attack-tester
+  namespace: vulnerable-namespace
+  labels:
+    app: pod-attack-tester
+spec:
+  serviceAccountName: sa-attack-tester
+
+  containers:
+    - name: app
+      image: python:3.11-slim
+      command: ["/bin/sh", "-c", "sleep 86400"]
+
+      env:
+        - name: APP_ENV
+          value: "testing"
+
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          cpu: "500m"
+          memory: "256Mi"
+
+  restartPolicy: Always

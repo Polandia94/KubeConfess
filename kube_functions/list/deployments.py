@@ -12,8 +12,21 @@ def list_deployments(k8s_apps, k8s=None, k8s_rbac=None, namespace: str = "all", 
             return f"No deployments found in: {namespace}"
 
         # Fetch bindings once if show_sa requested
-        crbs = k8s_rbac.list_cluster_role_binding().items if show_sa and k8s_rbac else []
-        rbs  = k8s_rbac.list_role_binding_for_all_namespaces().items if show_sa and k8s_rbac else []
+        crbs = []
+        rbs  = []
+        if show_sa and k8s_rbac:
+            try:
+                crbs = k8s_rbac.list_cluster_role_binding().items
+            except ApiException:
+                pass
+            try:
+                rbs = k8s_rbac.list_role_binding_for_all_namespaces().items
+            except ApiException:
+                try:
+                    ns_to_check = namespace if namespace != "all" else "default"
+                    rbs = k8s_rbac.list_namespaced_role_binding(namespace=ns_to_check).items
+                except ApiException:
+                    pass
 
         lines = [f"Found {len(dep_list.items)} deployment(s):\n"]
 

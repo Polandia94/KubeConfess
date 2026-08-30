@@ -11,8 +11,21 @@ def list_pods(k8s, k8s_rbac=None, namespace: str = "all", show_sa: bool = False)
             return f"No pods found in: {namespace}"
 
         # If show_sa, fetch bindings once for all SA lookups
-        crbs = k8s_rbac.list_cluster_role_binding().items if show_sa and k8s_rbac else []
-        rbs  = k8s_rbac.list_role_binding_for_all_namespaces().items if show_sa and k8s_rbac else []
+        crbs = []
+        rbs  = []
+        if show_sa and k8s_rbac:
+            try:
+                crbs = k8s_rbac.list_cluster_role_binding().items
+            except ApiException:
+                pass
+            try:
+                rbs = k8s_rbac.list_role_binding_for_all_namespaces().items
+            except ApiException:
+                try:
+                    ns_to_check = namespace if namespace != "all" else "default"
+                    rbs = k8s_rbac.list_namespaced_role_binding(namespace=ns_to_check).items
+                except ApiException:
+                    pass
 
         lines = [f"Found {len(pod_list.items)} pod(s):\n"]
 
