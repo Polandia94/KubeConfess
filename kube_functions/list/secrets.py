@@ -1,6 +1,5 @@
 from kubernetes.client.rest import ApiException
 
-
 # Secret types that are noisy and rarely interesting during an audit
 SYSTEM_SECRET_TYPES = [
     "kubernetes.io/service-account-token",
@@ -64,7 +63,7 @@ def _secrets_for_pod(k8s, pod_obj) -> str:
             lines.append(f"    via:    {', '.join(refs)}")
         except ApiException:
             lines.append(f"  {ns}/{secret_name}")
-            lines.append(f"    keys:   [could not read — insufficient permissions]")
+            lines.append("    keys:   [could not read — insufficient permissions]")
             lines.append(f"    via:    {', '.join(refs)}")
 
     return "\n".join(lines)

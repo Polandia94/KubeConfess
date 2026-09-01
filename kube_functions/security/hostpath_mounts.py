@@ -63,8 +63,8 @@ def _format_findings(findings: list, scope: str) -> str:
     for f in findings:
         lines.append(f"  ⚠ {f['severity']} — {f['namespace']}/{f['pod']} ({f['container']})")
         lines.append(f"     What: host path {f['host_path']} mounted at {f['mount']}")
-        lines.append(f"     Risk: container can read/write host filesystem at that path")
-        lines.append(f"     Fix:  remove hostPath volume — use PersistentVolumeClaim or ConfigMap instead\n")
+        lines.append("     Risk: container can read/write host filesystem at that path")
+        lines.append("     Fix:  remove hostPath volume — use PersistentVolumeClaim or ConfigMap instead\n")
 
     return "\n".join(lines)
 

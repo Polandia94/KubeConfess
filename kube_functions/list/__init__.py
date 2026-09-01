@@ -1,15 +1,25 @@
-from kube_functions.list.pods import list_pods, definition as pods_def
-from kube_functions.list.deployments import list_deployments, definition as deployments_def
-from kube_functions.list.namespaces import list_namespaces, definition as namespaces_def
-from kube_functions.list.services import list_services, definition as services_def
-from kube_functions.list.permissions import list_permissions, definition as permissions_def
-from kube_functions.list.roles import list_roles, definition as roles_def
-from kube_functions.list.clusterroles import list_clusterroles, definition as clusterroles_def
-from kube_functions.list.secrets import list_secrets, definition as secrets_def
-from kube_functions.list.serviceaccounts import list_serviceaccounts, definition as sa_def
-from kube_functions.list.rolebindings import list_rolebindings, definition as rolebindings_def
-from kube_functions.list.clusterrolebindings import list_clusterrolebindings, definition as crb_def  # ← add
-
+from kube_functions.list.clusterrolebindings import definition as crb_def
+from kube_functions.list.clusterrolebindings import list_clusterrolebindings  # ← add
+from kube_functions.list.clusterroles import definition as clusterroles_def
+from kube_functions.list.clusterroles import list_clusterroles
+from kube_functions.list.deployments import definition as deployments_def
+from kube_functions.list.deployments import list_deployments
+from kube_functions.list.namespaces import definition as namespaces_def
+from kube_functions.list.namespaces import list_namespaces
+from kube_functions.list.permissions import definition as permissions_def
+from kube_functions.list.permissions import list_permissions
+from kube_functions.list.pods import definition as pods_def
+from kube_functions.list.pods import list_pods
+from kube_functions.list.rolebindings import definition as rolebindings_def
+from kube_functions.list.rolebindings import list_rolebindings
+from kube_functions.list.roles import definition as roles_def
+from kube_functions.list.roles import list_roles
+from kube_functions.list.secrets import definition as secrets_def
+from kube_functions.list.secrets import list_secrets
+from kube_functions.list.serviceaccounts import definition as sa_def
+from kube_functions.list.serviceaccounts import list_serviceaccounts
+from kube_functions.list.services import definition as services_def
+from kube_functions.list.services import list_services
 
 definitions = [
     pods_def,

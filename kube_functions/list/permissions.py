@@ -1,7 +1,7 @@
 from pathlib import Path
-from kubernetes.client.rest import ApiException
-from kubernetes import client
 
+from kubernetes import client
+from kubernetes.client.rest import ApiException
 
 CHECKS = [
     ("get", "pods"),

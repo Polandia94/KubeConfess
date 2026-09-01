@@ -1,11 +1,10 @@
-import os
 import base64
 import json
+import os
 import socket
 from pathlib import Path
 
 import requests
-
 
 SA_TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 SA_NS_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"

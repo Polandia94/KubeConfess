@@ -1,7 +1,9 @@
-from kube_functions.attack.steal_tokens import steal_tokens, definition as token_def
-from kube_functions.attack.harvest_secrets import harvest_secrets, definition as harvest_def
-from kube_functions.attack.exec_pod import exec_pod, definition as exec_def
-
+from kube_functions.attack.exec_pod import definition as exec_def
+from kube_functions.attack.exec_pod import exec_pod
+from kube_functions.attack.harvest_secrets import definition as harvest_def
+from kube_functions.attack.harvest_secrets import harvest_secrets
+from kube_functions.attack.steal_tokens import definition as token_def
+from kube_functions.attack.steal_tokens import steal_tokens
 
 definitions = [token_def, harvest_def, exec_def]
 

@@ -1,6 +1,6 @@
 import base64
-from kubernetes.client.rest import ApiException
 
+from kubernetes.client.rest import ApiException
 
 SKIP_TYPES = [
     "kubernetes.io/dockerconfigjson",

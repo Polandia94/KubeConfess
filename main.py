@@ -1,17 +1,18 @@
 import argparse
-import readline
-from rich.console import Console
-from rich.panel import Panel
-from rich.text import Text
-from rich.live import Live
-from rich.spinner import Spinner
-from rich import box
+
 from openai import OpenAI
-from config.vars import API_KEY, MODEL_NAME, BASE_URL, MAX_TOKENS
-from kube_functions.connector import connect
-from kube_functions.prompts import SYSTEM_PROMPT, ANALYSE_PROMPT
-from kube_functions.investigate import gather
+from rich import box
+from rich.console import Console
+from rich.live import Live
+from rich.panel import Panel
+from rich.spinner import Spinner
+from rich.text import Text
+
 from agent import send
+from config.vars import API_KEY, BASE_URL, MAX_TOKENS, MODEL_NAME
+from kube_functions.connector import connect
+from kube_functions.investigate import gather
+from kube_functions.prompts import ANALYSE_PROMPT, SYSTEM_PROMPT
 
 console = Console()
 ai = OpenAI(api_key=API_KEY, base_url=BASE_URL)
@@ -96,7 +97,6 @@ def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages):
     Gather all data with fixed tool calls (no AI loop),
     then send to Claude once for analysis.
     """
-    collected = []
 
     # ── Step 1: gather data with progress display ─────────────────────────────
     with Live(console=console, transient=True) as live:
@@ -106,7 +106,7 @@ def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages):
 
         data = gather(target, k8s, k8s_apps, k8s_auth, k8s_rbac, on_step=on_step)
 
-    console.print(f"  [bold green]✓[/bold green] [dim]Data gathered — analysing...[/dim]")
+    console.print("  [bold green]✓[/bold green] [dim]Data gathered — analysing...[/dim]")
 
     # ── Step 2: send everything to Claude once, no tools ─────────────────────
     analysis_message = (

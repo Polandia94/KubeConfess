@@ -1,6 +1,5 @@
 from kubernetes.client.rest import ApiException
 
-
 # System ClusterRoles are noisy and rarely interesting — filter by default
 SYSTEM_PREFIXES = [
     "system:",

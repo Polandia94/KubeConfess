@@ -1,8 +1,11 @@
-from kube_functions.security.privileged import check_privileged_pods, definition as privileged_def
-from kube_functions.security.root_containers import check_root_containers, definition as root_def
-from kube_functions.security.hostpath_mounts import check_hostpath_mounts, definition as hostpath_def
-from kube_functions.security.pod_self_scan import scan_current_pod, definition as self_scan_def
-
+from kube_functions.security.hostpath_mounts import check_hostpath_mounts
+from kube_functions.security.hostpath_mounts import definition as hostpath_def
+from kube_functions.security.pod_self_scan import definition as self_scan_def
+from kube_functions.security.pod_self_scan import scan_current_pod
+from kube_functions.security.privileged import check_privileged_pods
+from kube_functions.security.privileged import definition as privileged_def
+from kube_functions.security.root_containers import check_root_containers
+from kube_functions.security.root_containers import definition as root_def
 
 definitions = [privileged_def, root_def, hostpath_def, self_scan_def]
 

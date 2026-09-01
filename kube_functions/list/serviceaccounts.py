@@ -43,7 +43,7 @@ def list_serviceaccounts(k8s, k8s_rbac, namespace: str = "all") -> str:
             lines.append(f"  {ns}/{name} — {automount_str}")
 
             if not sa_rbs and not sa_crbs:
-                lines.append(f"    bindings: none")
+                lines.append("    bindings: none")
             else:
                 for rb in sa_rbs:
                     lines.append(

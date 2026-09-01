@@ -60,7 +60,7 @@ def list_pods(k8s, k8s_rbac=None, namespace: str = "all", show_sa: bool = False)
                 ]
 
                 if not sa_crbs and not sa_rbs:
-                    lines.append(f"    bindings: none")
+                    lines.append("    bindings: none")
                 else:
                     for crb in sa_crbs:
                         flag = " ⚠ CRITICAL" if crb.role_ref.name == "cluster-admin" else ""

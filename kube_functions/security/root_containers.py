@@ -36,8 +36,8 @@ def _format_findings(findings: list, scope: str) -> str:
     for f in findings:
         lines.append(f"  ⚠ HIGH — {f['namespace']}/{f['pod']} ({f['container']})")
         lines.append(f"     What: {f['reason']}")
-        lines.append(f"     Risk: process breakout gives attacker root on the container filesystem")
-        lines.append(f"     Fix: set securityContext.runAsNonRoot: true and runAsUser: <non-zero>\n")
+        lines.append("     Risk: process breakout gives attacker root on the container filesystem")
+        lines.append("     Fix: set securityContext.runAsNonRoot: true and runAsUser: <non-zero>\n")
     return "\n".join(lines)
 
 

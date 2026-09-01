@@ -1,6 +1,7 @@
 import shlex
-from kubernetes.stream import stream
+
 from kubernetes.client.rest import ApiException
+from kubernetes.stream import stream
 
 
 def exec_pod(k8s, pod_name: str, namespace: str, command: str) -> str:

