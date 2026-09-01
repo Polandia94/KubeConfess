@@ -1,5 +1,6 @@
 from kubernetes.client.rest import ApiException
 
+
 def list_namespaces(k8s) -> str:
     try:
         namespaces = k8s.list_namespace()
@@ -15,15 +16,12 @@ def list_namespaces(k8s) -> str:
     except ApiException as e:
         return f"Kubernetes API error: {e.status} {e.reason}"
 
+
 definition = {
     "type": "function",
     "function": {
         "name": "list_namespaces",
         "description": "List all namespaces in the Kubernetes cluster",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
-    }
+        "parameters": {"type": "object", "properties": {}, "required": []},
+    },
 }

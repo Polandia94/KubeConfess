@@ -1,5 +1,6 @@
 from kubernetes.client.rest import ApiException
 
+
 def _check_root(pod) -> list:
     findings = []
     for container in pod.spec.containers:
@@ -16,12 +17,14 @@ def _check_root(pod) -> list:
             reason = "runAsUser set to 0 (root)"
 
         if reason:
-            findings.append({
-                "pod":       pod.metadata.name,
-                "namespace": pod.metadata.namespace,
-                "container": container.name,
-                "reason":    reason,
-            })
+            findings.append(
+                {
+                    "pod": pod.metadata.name,
+                    "namespace": pod.metadata.namespace,
+                    "container": container.name,
+                    "reason": reason,
+                }
+            )
     return findings
 
 
@@ -85,20 +88,11 @@ definition = {
         "parameters": {
             "type": "object",
             "properties": {
-                "namespace": {
-                    "type": "string",
-                    "description": "Namespace to scan, or 'all' for every namespace."
-                },
-                "pod": {
-                    "type": "string",
-                    "description": "Specific pod name to check."
-                },
-                "deployment": {
-                    "type": "string",
-                    "description": "Deployment name — checks all pods belonging to it."
-                }
+                "namespace": {"type": "string", "description": "Namespace to scan, or 'all' for every namespace."},
+                "pod": {"type": "string", "description": "Specific pod name to check."},
+                "deployment": {"type": "string", "description": "Deployment name — checks all pods belonging to it."},
             },
-            "required": []
-        }
-    }
+            "required": [],
+        },
+    },
 }

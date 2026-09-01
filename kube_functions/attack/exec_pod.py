@@ -20,10 +20,7 @@ def exec_pod(k8s, pod_name: str, namespace: str, command: str) -> str:
 
     except ApiException as e:
         if e.status == 403:
-            return (
-                f"✗ Exec denied on {namespace}/{pod_name}\n"
-                f"  SA lacks create pods/exec permission."
-            )
+            return f"✗ Exec denied on {namespace}/{pod_name}\n  SA lacks create pods/exec permission."
         if e.status == 404:
             return f"✗ Pod {namespace}/{pod_name} not found."
         return f"Kubernetes API error: {e.status} {e.reason}"
@@ -45,20 +42,11 @@ definition = {
         "parameters": {
             "type": "object",
             "properties": {
-                "pod_name": {
-                    "type": "string",
-                    "description": "Name of the pod to run the command in."
-                },
-                "namespace": {
-                    "type": "string",
-                    "description": "Namespace the pod is in."
-                },
-                "command": {
-                    "type": "string",
-                    "description": "Command to run e.g. 'id', 'cat /etc/passwd', 'env'"
-                }
+                "pod_name": {"type": "string", "description": "Name of the pod to run the command in."},
+                "namespace": {"type": "string", "description": "Namespace the pod is in."},
+                "command": {"type": "string", "description": "Command to run e.g. 'id', 'cat /etc/passwd', 'env'"},
             },
-            "required": ["pod_name", "namespace", "command"]
-        }
-    }
+            "required": ["pod_name", "namespace", "command"],
+        },
+    },
 }

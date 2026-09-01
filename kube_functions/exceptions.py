@@ -1,3 +1,1 @@
-NAMESPACE_EXCEPTIONS = [
-    "kube-system"
-]
+NAMESPACE_EXCEPTIONS = ["kube-system"]

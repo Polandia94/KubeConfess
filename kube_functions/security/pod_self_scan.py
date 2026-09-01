@@ -8,12 +8,25 @@ import requests
 
 
 SA_TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
-SA_NS_PATH    = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+SA_NS_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
 SENSITIVE_ENV_PATTERNS = [
-    "PASSWORD", "PASSWD", "SECRET", "TOKEN",  "APIKEY",
-    "PRIVATE_KEY", "CREDENTIALS", "AUTH", "DATABASE_URL", "DB_URL",
-    "AWS_", "GCP_", "AZURE_", "GITHUB_TOKEN", "GITLAB_TOKEN", "BEARER",
+    "PASSWORD",
+    "PASSWD",
+    "SECRET",
+    "TOKEN",
+    "APIKEY",
+    "PRIVATE_KEY",
+    "CREDENTIALS",
+    "AUTH",
+    "DATABASE_URL",
+    "DB_URL",
+    "AWS_",
+    "GCP_",
+    "AZURE_",
+    "GITHUB_TOKEN",
+    "GITLAB_TOKEN",
+    "BEARER",
 ]
 
 SENSITIVE_FILES = [
@@ -37,16 +50,16 @@ RUNTIME_SOCKETS = [
 ]
 
 METADATA_ENDPOINTS = {
-    "aws":   ("http://169.254.169.254/latest/meta-data/",              {}),
-    "gcp":   ("http://metadata.google.internal/computeMetadata/v1/",   {"Metadata-Flavor": "Google"}),
+    "aws": ("http://169.254.169.254/latest/meta-data/", {}),
+    "gcp": ("http://metadata.google.internal/computeMetadata/v1/", {"Metadata-Flavor": "Google"}),
     "azure": ("http://169.254.169.254/metadata/instance?api-version=2021-02-01", {"Metadata": "true"}),
 }
 
 
 def _get_identity() -> dict:
     result = {
-        "uid":      os.getuid(),
-        "is_root":  os.getuid() == 0,
+        "uid": os.getuid(),
+        "is_root": os.getuid() == 0,
         "hostname": socket.gethostname(),
     }
     try:
@@ -55,15 +68,12 @@ def _get_identity() -> dict:
         result["token_present"] = True
         parts = token.split(".")
         if len(parts) == 3:
-            payload = json.loads(
-                base64.b64decode(parts[1] + "==")
-                .decode("utf-8", errors="replace")
-            )
+            payload = json.loads(base64.b64decode(parts[1] + "==").decode("utf-8", errors="replace"))
             k8s = payload.get("kubernetes.io", {})
             result["serviceaccount"] = k8s.get("serviceaccount", {}).get("name", "unknown")
-            result["pod_name"]       = k8s.get("pod",            {}).get("name", "unknown")
-            result["node_name"]      = k8s.get("node",           {}).get("name", "unknown")
-            result["token_expiry"]   = payload.get("exp", "no expiry — static token ⚠")
+            result["pod_name"] = k8s.get("pod", {}).get("name", "unknown")
+            result["node_name"] = k8s.get("node", {}).get("name", "unknown")
+            result["token_expiry"] = payload.get("exp", "no expiry — static token ⚠")
     except FileNotFoundError:
         result["token_present"] = False
     except Exception as e:
@@ -77,10 +87,10 @@ def _get_capabilities() -> dict:
             if line.startswith("CapEff:"):
                 cap_hex = int(line.split(":")[1].strip(), 16)
                 return {
-                    "CapEff":             hex(cap_hex),
-                    "is_privileged":      cap_hex >= 0x0000003fffffffff,
-                    "has_CAP_SYS_ADMIN":  bool(cap_hex & (1 << 21)),
-                    "has_CAP_NET_ADMIN":  bool(cap_hex & (1 << 12)),
+                    "CapEff": hex(cap_hex),
+                    "is_privileged": cap_hex >= 0x0000003FFFFFFFFF,
+                    "has_CAP_SYS_ADMIN": bool(cap_hex & (1 << 21)),
+                    "has_CAP_NET_ADMIN": bool(cap_hex & (1 << 12)),
                     "has_CAP_SYS_PTRACE": bool(cap_hex & (1 << 19)),
                 }
     except Exception as e:
@@ -96,11 +106,18 @@ def _get_mounts() -> list:
             if len(parts) < 2:
                 continue
             mp = parts[1]
-            if any(mp.startswith(p) for p in [
-                "/host", "/rootfs", "/proc/host",
-                "/etc/kubernetes", "/var/lib/kubelet",
-                "/var/lib/docker", "/var/run/docker",
-            ]):
+            if any(
+                mp.startswith(p)
+                for p in [
+                    "/host",
+                    "/rootfs",
+                    "/proc/host",
+                    "/etc/kubernetes",
+                    "/var/lib/kubelet",
+                    "/var/lib/docker",
+                    "/var/run/docker",
+                ]
+            ):
                 suspicious.append(mp)
     except Exception:
         pass
@@ -157,8 +174,8 @@ def _probe_metadata() -> dict:
             r = requests.get(url, headers=headers, timeout=2, allow_redirects=False)
             results[cloud] = {
                 "reachable": True,
-                "status":    r.status_code,
-                "preview":   r.text[:200],
+                "status": r.status_code,
+                "preview": r.text[:200],
             }
         except requests.exceptions.ConnectionError:
             results[cloud] = {"reachable": False}
@@ -231,10 +248,7 @@ def scan_current_pod() -> str:
     pid = _get_pid_namespace()
     lines.append("PID NAMESPACE:")
     if pid.get("likely_host_pid"):
-        lines.append(
-            f"  ⚠ CRITICAL — {pid['visible_processes']} processes visible "
-            f"(likely host PID namespace)"
-        )
+        lines.append(f"  ⚠ CRITICAL — {pid['visible_processes']} processes visible (likely host PID namespace)")
     else:
         lines.append(f"  ✓ {pid.get('visible_processes', '?')} processes (isolated)")
     lines.append("")
@@ -286,10 +300,6 @@ definition = {
             "PID namespace, cloud metadata endpoints, sensitive env vars, "
             "and sensitive files. Always run this first when operating in-cluster."
         ),
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
-    }
+        "parameters": {"type": "object", "properties": {}, "required": []},
+    },
 }

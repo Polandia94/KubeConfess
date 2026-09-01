@@ -22,8 +22,10 @@ def list_clusterroles(k8s_rbac, include_system: bool = False) -> str:
         items = clusterroles.items
         if not include_system:
             items = [
-                cr for cr in items
-                if not any(cr.metadata.name.startswith(p) for p in SYSTEM_PREFIXES) and cr.metadata.name not in EXCLUDED_NAMES
+                cr
+                for cr in items
+                if not any(cr.metadata.name.startswith(p) for p in SYSTEM_PREFIXES)
+                and cr.metadata.name not in EXCLUDED_NAMES
             ]
 
         if not items:
@@ -34,8 +36,8 @@ def list_clusterroles(k8s_rbac, include_system: bool = False) -> str:
             rules_count = len(cr.rules) if cr.rules else 0
             lines.append(f"  {cr.metadata.name} — {rules_count} rule(s)")
 
-            for rule in (cr.rules or []):
-                verbs     = ", ".join(rule.verbs or [])
+            for rule in cr.rules or []:
+                verbs = ", ".join(rule.verbs or [])
                 resources = ", ".join(rule.resources or [])
 
                 # Flag wildcards immediately
@@ -65,10 +67,10 @@ definition = {
             "properties": {
                 "include_system": {
                     "type": "boolean",
-                    "description": "Include system ClusterRoles (system:, kubeadm: prefixes). Defaults to false."
+                    "description": "Include system ClusterRoles (system:, kubeadm: prefixes). Defaults to false.",
                 }
             },
-            "required": []
-        }
-    }
+            "required": [],
+        },
+    },
 }

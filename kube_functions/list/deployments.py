@@ -13,7 +13,7 @@ def list_deployments(k8s_apps, k8s=None, k8s_rbac=None, namespace: str = "all", 
 
         # Fetch bindings once if show_sa requested
         crbs = []
-        rbs  = []
+        rbs = []
         if show_sa and k8s_rbac:
             try:
                 crbs = k8s_rbac.list_cluster_role_binding().items
@@ -31,9 +31,9 @@ def list_deployments(k8s_apps, k8s=None, k8s_rbac=None, namespace: str = "all", 
         lines = [f"Found {len(dep_list.items)} deployment(s):\n"]
 
         for dep in dep_list.items:
-            ns      = dep.metadata.namespace
-            name    = dep.metadata.name
-            ready   = dep.status.ready_replicas or 0
+            ns = dep.metadata.namespace
+            name = dep.metadata.name
+            ready = dep.status.ready_replicas or 0
             desired = dep.spec.replicas or 0
 
             # SA is defined in the pod template spec
@@ -44,20 +44,18 @@ def list_deployments(k8s_apps, k8s=None, k8s_rbac=None, namespace: str = "all", 
 
             if show_sa and k8s_rbac:
                 sa_crbs = [
-                    crb for crb in crbs
+                    crb
+                    for crb in crbs
                     if any(
-                        s.kind == "ServiceAccount" and
-                        s.name == sa_name and
-                        s.namespace == ns
+                        s.kind == "ServiceAccount" and s.name == sa_name and s.namespace == ns
                         for s in (crb.subjects or [])
                     )
                 ]
                 sa_rbs = [
-                    rb for rb in rbs
+                    rb
+                    for rb in rbs
                     if any(
-                        s.kind == "ServiceAccount" and
-                        s.name == sa_name and
-                        s.namespace == ns
+                        s.kind == "ServiceAccount" and s.name == sa_name and s.namespace == ns
                         for s in (rb.subjects or [])
                     )
                 ]
@@ -100,16 +98,13 @@ definition = {
         "parameters": {
             "type": "object",
             "properties": {
-                "namespace": {
-                    "type": "string",
-                    "description": "Namespace to filter by, or 'all' for every namespace."
-                },
+                "namespace": {"type": "string", "description": "Namespace to filter by, or 'all' for every namespace."},
                 "show_sa": {
                     "type": "boolean",
-                    "description": "Show ServiceAccount, RBAC bindings, and pod names for each deployment. Defaults to false."
-                }
+                    "description": "Show ServiceAccount, RBAC bindings, and pod names for each deployment. Defaults to false.",
+                },
             },
-            "required": []
-        }
-    }
+            "required": [],
+        },
+    },
 }
