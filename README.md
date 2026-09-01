@@ -206,7 +206,7 @@ kubectl exec -it <pod> -n <namespace> -- /bin/sh
 # inside
 cd /tmp/kubeconfess
 apk add --no-cache python3 py3-pip
-pip3 install -r . --break-system-packages
+pip3 install . --break-system-packages
 export API_KEY=sk-ant-...
 python3 main.py --incluster
 ```
