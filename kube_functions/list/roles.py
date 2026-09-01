@@ -16,8 +16,8 @@ def list_roles(k8s_rbac, namespace: str = "all") -> str:
             rules_count = len(role.rules) if role.rules else 0
             lines.append(f"  {role.metadata.namespace}/{role.metadata.name} — {rules_count} rule(s)")
 
-            for rule in (role.rules or []):
-                verbs     = ", ".join(rule.verbs or [])
+            for rule in role.rules or []:
+                verbs = ", ".join(rule.verbs or [])
                 resources = ", ".join(rule.resources or [])
                 lines.append(f"    verbs: [{verbs}]  resources: [{resources}]")
 
@@ -38,13 +38,8 @@ definition = {
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "namespace": {
-                    "type": "string",
-                    "description": "Namespace to filter by, or 'all' for every namespace."
-                }
-            },
-            "required": []
-        }
-    }
+            "properties": {"namespace": {"type": "string", "description": "Namespace to filter by, or 'all' for every namespace."}},
+            "required": [],
+        },
+    },
 }

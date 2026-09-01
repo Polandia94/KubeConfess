@@ -2,6 +2,7 @@ from kubernetes.client.rest import ApiException
 
 DANGEROUS_ROLES = ["cluster-admin", "admin", "edit"]
 
+
 def list_rolebindings(k8s_rbac, namespace: str = "all") -> str:
     try:
         if namespace == "all":
@@ -14,13 +15,13 @@ def list_rolebindings(k8s_rbac, namespace: str = "all") -> str:
 
         lines = [f"Found {len(rbs)} RoleBinding(s):\n"]
         for rb in rbs:
-            role     = rb.role_ref.name
+            role = rb.role_ref.name
             subjects = rb.subjects or []
-            flag     = " ⚠ CRITICAL" if role == "cluster-admin" else " ⚠" if role in DANGEROUS_ROLES else ""
+            flag = " ⚠ CRITICAL" if role == "cluster-admin" else " ⚠" if role in DANGEROUS_ROLES else ""
 
             lines.append(f"  {rb.metadata.namespace}/{rb.metadata.name} → {role}{flag}")
             for s in subjects:
-                ns_str = f"/{s.namespace}" if getattr(s, 'namespace', None) else ""
+                ns_str = f"/{s.namespace}" if getattr(s, "namespace", None) else ""
                 lines.append(f"    subject: {s.kind}{ns_str}/{s.name}")
             lines.append("")
 
@@ -43,13 +44,8 @@ definition = {
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "namespace": {
-                    "type": "string",
-                    "description": "Namespace to filter by, or 'all' for every namespace."
-                }
-            },
-            "required": []
-        }
-    }
+            "properties": {"namespace": {"type": "string", "description": "Namespace to filter by, or 'all' for every namespace."}},
+            "required": [],
+        },
+    },
 }

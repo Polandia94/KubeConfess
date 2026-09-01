@@ -1,6 +1,5 @@
 from kubernetes.client.rest import ApiException
 
-
 # Secret types that are noisy and rarely interesting during an audit
 SYSTEM_SECRET_TYPES = [
     "kubernetes.io/service-account-token",
@@ -21,20 +20,20 @@ def _format_secret(secret, redact: bool = True) -> list:
 
 def _secrets_for_pod(k8s, pod_obj) -> str:
     """Extract secrets a pod has access to via env vars and volume mounts."""
-    ns   = pod_obj.metadata.namespace
+    ns = pod_obj.metadata.namespace
     name = pod_obj.metadata.name
-    found = {}
+    found: dict[str, list] = {}
 
     for container in pod_obj.spec.containers:
         # Secrets injected as env vars
-        for env in (container.env or []):
+        for env in container.env or []:
             if env.value_from and env.value_from.secret_key_ref:
                 ref = env.value_from.secret_key_ref
                 found[ref.name] = found.get(ref.name, [])
                 found[ref.name].append(f"env:{env.name} → key:{ref.key}")
 
         # Secrets from envFrom
-        for env_from in (container.env_from or []):
+        for env_from in container.env_from or []:
             if env_from.secret_ref:
                 ref = env_from.secret_ref
                 found[ref.name] = found.get(ref.name, [])
@@ -43,7 +42,7 @@ def _secrets_for_pod(k8s, pod_obj) -> str:
     # Secrets mounted as volumes
     volumes = {v.name: v for v in (pod_obj.spec.volumes or [])}
     for container in pod_obj.spec.containers:
-        for mount in (container.volume_mounts or []):
+        for mount in container.volume_mounts or []:
             volume = volumes.get(mount.name)
             if volume and volume.secret:
                 ref = volume.secret.secret_name
@@ -64,15 +63,13 @@ def _secrets_for_pod(k8s, pod_obj) -> str:
             lines.append(f"    via:    {', '.join(refs)}")
         except ApiException:
             lines.append(f"  {ns}/{secret_name}")
-            lines.append(f"    keys:   [could not read — insufficient permissions]")
+            lines.append("    keys:   [could not read — insufficient permissions]")
             lines.append(f"    via:    {', '.join(refs)}")
 
     return "\n".join(lines)
 
 
-def list_secrets(k8s, k8s_apps=None, namespace: str = "all",
-                 pod: str = None, deployment: str = None,
-                 include_system: bool = False) -> str:
+def list_secrets(k8s, k8s_apps=None, namespace: str = "all", pod: str = None, deployment: str = None, include_system: bool = False) -> str:
     try:
         # ── Single pod — show secrets it references ───────────────────────────
         if pod:
@@ -145,22 +142,19 @@ definition = {
             "properties": {
                 "namespace": {
                     "type": "string",
-                    "description": "Namespace to list secrets from, or 'all' for cluster-wide."
+                    "description": "Namespace to list secrets from, or 'all' for cluster-wide.",
                 },
-                "pod": {
-                    "type": "string",
-                    "description": "Pod name — returns secrets that pod references in its spec."
-                },
+                "pod": {"type": "string", "description": "Pod name — returns secrets that pod references in its spec."},
                 "deployment": {
                     "type": "string",
-                    "description": "Deployment name — returns secrets referenced by its pods."
+                    "description": "Deployment name — returns secrets referenced by its pods.",
                 },
                 "include_system": {
                     "type": "boolean",
-                    "description": "Include system secrets (SA tokens, Helm releases). Defaults to false."
-                }
+                    "description": "Include system secrets (SA tokens, Helm releases). Defaults to false.",
+                },
             },
-            "required": []
-        }
-    }
+            "required": [],
+        },
+    },
 }

@@ -7,11 +7,13 @@ def _check_containers(pod) -> list:
     for container in pod.spec.containers:
         sc = container.security_context
         if sc and sc.privileged:
-            findings.append({
-                "pod":       pod.metadata.name,
-                "namespace": pod.metadata.namespace,
-                "container": container.name,
-            })
+            findings.append(
+                {
+                    "pod": pod.metadata.name,
+                    "namespace": pod.metadata.namespace,
+                    "container": container.name,
+                }
+            )
     return findings
 
 
@@ -87,20 +89,11 @@ definition = {
         "parameters": {
             "type": "object",
             "properties": {
-                "namespace": {
-                    "type": "string",
-                    "description": "Namespace to scan, or 'all' for every namespace."
-                },
-                "pod": {
-                    "type": "string",
-                    "description": "Specific pod name to check."
-                },
-                "deployment": {
-                    "type": "string",
-                    "description": "Deployment name — checks all pods belonging to it."
-                }
+                "namespace": {"type": "string", "description": "Namespace to scan, or 'all' for every namespace."},
+                "pod": {"type": "string", "description": "Specific pod name to check."},
+                "deployment": {"type": "string", "description": "Deployment name — checks all pods belonging to it."},
             },
-            "required": []
-        }
-    }
+            "required": [],
+        },
+    },
 }

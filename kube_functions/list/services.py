@@ -1,5 +1,6 @@
 from kubernetes.client.rest import ApiException
 
+
 def list_services(k8s, namespace: str = "all") -> str:
     try:
         if namespace == "all":
@@ -24,9 +25,7 @@ def list_services(k8s, namespace: str = "all") -> str:
                 pod_names = ["no selector — headless or external service"]
 
             # Build service info
-            ports = ", ".join(
-                f"{p.port}/{p.protocol}" for p in (svc.spec.ports or [])
-            )
+            ports = ", ".join(f"{p.port}/{p.protocol}" for p in (svc.spec.ports or []))
             lines.append(f"  {ns}/{svc.metadata.name}")
             lines.append(f"    type:  {svc.spec.type}")
             lines.append(f"    ports: {ports or 'none'}")
@@ -37,6 +36,7 @@ def list_services(k8s, namespace: str = "all") -> str:
     except ApiException as e:
         return f"Kubernetes API error: {e.status} {e.reason}"
 
+
 definition = {
     "type": "function",
     "function": {
@@ -44,13 +44,8 @@ definition = {
         "description": "List services in the Kubernetes cluster and which pods they are attached to, optionally filtered by namespace",
         "parameters": {
             "type": "object",
-            "properties": {
-                "namespace": {
-                    "type": "string",
-                    "description": "Namespace to filter by, or 'all' for every namespace"
-                }
-            },
-            "required": []
-        }
-    }
+            "properties": {"namespace": {"type": "string", "description": "Namespace to filter by, or 'all' for every namespace"}},
+            "required": [],
+        },
+    },
 }

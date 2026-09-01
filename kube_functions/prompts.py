@@ -1,5 +1,6 @@
 from kube_functions.exceptions import NAMESPACE_EXCEPTIONS
 
+
 def _build_exceptions_block() -> str:
     if not NAMESPACE_EXCEPTIONS:
         return "No exceptions configured — flag everything."

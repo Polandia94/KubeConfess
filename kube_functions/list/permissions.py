@@ -1,48 +1,48 @@
 from pathlib import Path
-from kubernetes.client.rest import ApiException
-from kubernetes import client
 
+from kubernetes import client
+from kubernetes.client.rest import ApiException
 
 CHECKS = [
-    ("get",    "pods"),
-    ("list",   "pods"),
+    ("get", "pods"),
+    ("list", "pods"),
     ("create", "pods"),
     ("delete", "pods"),
-    ("get",    "pods/exec"),
+    ("get", "pods/exec"),
     ("create", "pods/exec"),
-    ("get",    "deployments"),
-    ("list",   "deployments"),
+    ("get", "deployments"),
+    ("list", "deployments"),
     ("create", "deployments"),
     ("delete", "deployments"),
-    ("get",    "secrets"),
-    ("list",   "secrets"),
+    ("get", "secrets"),
+    ("list", "secrets"),
     ("create", "secrets"),
-    ("get",    "configmaps"),
-    ("list",   "configmaps"),
-    ("get",    "services"),
-    ("list",   "services"),
-    ("get",    "roles"),
-    ("list",   "roles"),
+    ("get", "configmaps"),
+    ("list", "configmaps"),
+    ("get", "services"),
+    ("list", "services"),
+    ("get", "roles"),
+    ("list", "roles"),
     ("create", "rolebindings"),
-    ("get",    "clusterroles"),
-    ("list",   "clusterroles"),
+    ("get", "clusterroles"),
+    ("list", "clusterroles"),
     ("create", "clusterrolebindings"),
-    ("get",    "serviceaccounts"),
-    ("list",   "serviceaccounts"),
+    ("get", "serviceaccounts"),
+    ("list", "serviceaccounts"),
     ("create", "serviceaccounts"),
-    ("get",    "nodes"),
-    ("list",   "nodes"),
-    ("get",    "namespaces"),
-    ("list",   "namespaces"),
+    ("get", "nodes"),
+    ("list", "nodes"),
+    ("get", "namespaces"),
+    ("list", "namespaces"),
     ("create", "namespaces"),
-    ("*",      "*"),
+    ("*", "*"),
 ]
 
 
 def _check_single_permission(k8s_auth, verb, resource, namespace=None) -> bool:
     """Check one verb/resource combo, return True if allowed."""
-    parts       = resource.split("/")
-    res         = parts[0]
+    parts = resource.split("/")
+    res = parts[0]
     subresource = parts[1] if len(parts) > 1 else None
     try:
         review = k8s_auth.create_self_subject_access_review(
@@ -78,17 +78,24 @@ def _get_accessible_namespaces(k8s_auth, k8s) -> list:
 
     # can't list namespaces — try common ones + current namespace
     candidates = [
-        "default", "kube-system", "kube-public",
-        "monitoring", "logging", "istio-system",
-        "cert-manager", "ingress-nginx", "vault",
-        "payments", "staging", "production", "dev",
+        "default",
+        "kube-system",
+        "kube-public",
+        "monitoring",
+        "logging",
+        "istio-system",
+        "cert-manager",
+        "ingress-nginx",
+        "vault",
+        "payments",
+        "staging",
+        "production",
+        "dev",
     ]
 
     # add current namespace if in-cluster
     try:
-        current = Path(
-            "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
-        ).read_text().strip()
+        current = Path("/var/run/secrets/kubernetes.io/serviceaccount/namespace").read_text().strip()
         if current not in candidates:
             candidates.insert(0, current)
     except FileNotFoundError:
@@ -103,13 +110,11 @@ def _get_accessible_namespaces(k8s_auth, k8s) -> list:
     return accessible
 
 
-def list_permissions(k8s_auth: client.AuthorizationV1Api,
-                     k8s: client.CoreV1Api = None,
-                     namespace: str = "all") -> str:
+def list_permissions(k8s_auth: client.AuthorizationV1Api, k8s: client.CoreV1Api = None, namespace: str = "all") -> str:
     try:
         allowed_cluster = []
-        allowed_by_ns   = {}  # namespace → list of allowed permissions
-        denied          = []
+        allowed_by_ns: dict[str, list] = {}  # namespace → list of allowed permissions
+        denied = []
 
         # ── Step 1: cluster-scoped check ─────────────────────────────────────
         for verb, resource in CHECKS:
@@ -140,9 +145,7 @@ def list_permissions(k8s_auth: client.AuthorizationV1Api,
                     allowed_by_ns[ns].append(entry)
 
         # ── Step 4: anything not allowed anywhere is denied ───────────────────
-        ns_allowed_set = set(
-            p for perms in allowed_by_ns.values() for p in perms
-        )
+        ns_allowed_set = set(p for perms in allowed_by_ns.values() for p in perms)
         for verb, resource in CHECKS:
             entry = f"{verb} {resource}"
             if entry not in cluster_allowed_set and entry not in ns_allowed_set:
@@ -152,9 +155,7 @@ def list_permissions(k8s_auth: client.AuthorizationV1Api,
         lines = []
 
         if "* *" in allowed_cluster:
-            lines.append(
-                "⚠ [CLUSTER-ADMIN] Wildcard permissions — full cluster access\n"
-            )
+            lines.append("⚠ [CLUSTER-ADMIN] Wildcard permissions — full cluster access\n")
 
         lines.append(f"Checked {len(CHECKS)} permission(s)\n")
 
@@ -176,9 +177,7 @@ def list_permissions(k8s_auth: client.AuthorizationV1Api,
             lines.append("")
 
         if namespaces_to_check:
-            lines.append(
-                f"Namespaces checked: {', '.join(namespaces_to_check)}\n"
-            )
+            lines.append(f"Namespaces checked: {', '.join(namespaces_to_check)}\n")
 
         if denied:
             lines.append(f"[DENIED] {len(denied)}:")
@@ -207,13 +206,10 @@ definition = {
             "properties": {
                 "namespace": {
                     "type": "string",
-                    "description": (
-                        "Specific namespace to check, or 'all' to auto-discover "
-                        "accessible namespaces and check each one."
-                    )
+                    "description": ("Specific namespace to check, or 'all' to auto-discover accessible namespaces and check each one."),
                 }
             },
-            "required": []
-        }
-    }
+            "required": [],
+        },
+    },
 }

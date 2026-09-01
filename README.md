@@ -341,6 +341,7 @@ Here's the simplest possible example — `kube_functions/list/nodes.py`:
 ```python
 from kubernetes.client.rest import ApiException
 
+
 def list_nodes(k8s) -> str:
     try:
         nodes = k8s.list_node()
@@ -350,10 +351,7 @@ def list_nodes(k8s) -> str:
 
         lines = [f"Found {len(nodes.items)} node(s):\n"]
         for node in nodes.items:
-            status = "Ready" if any(
-                c.type == "Ready" and c.status == "True"
-                for c in node.status.conditions
-            ) else "NotReady"
+            status = "Ready" if any(c.type == "Ready" and c.status == "True" for c in node.status.conditions) else "NotReady"
             lines.append(f"  {node.metadata.name} — {status}")
         return "\n".join(lines)
 
@@ -366,12 +364,8 @@ definition = {
     "function": {
         "name": "list_nodes",
         "description": "List all nodes in the cluster and their Ready status.",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
-    }
+        "parameters": {"type": "object", "properties": {}, "required": []},
+    },
 }
 ```
 
@@ -390,12 +384,13 @@ Once the file exists, add two lines to `kube_functions/list/__init__.py`:
 ```python
 from kube_functions.list.nodes import list_nodes, definition as nodes_def
 
-definitions = [..., nodes_def]   # add nodes_def to the existing list
+definitions = [..., nodes_def]  # add nodes_def to the existing list
+
 
 def dispatch(name, args, k8s=None, k8s_apps=None, k8s_auth=None):
     ...
     if name == "list_nodes":
-        return list_nodes(k8s)   # pass the right client
+        return list_nodes(k8s)  # pass the right client
 ```
 
 `agent.py` and `main.py` don't change. The AI automatically learns about the new tool because `definitions` is passed to it on every request.
@@ -426,8 +421,7 @@ Attack tools should only be called when the user explicitly requests offensive o
 If you add a new security or attack tool and want it to run automatically during investigations, add it to the `gather()` function in `kube_functions/investigate.py`:
 
 ```python
-run("YOUR NEW CHECK",
-    your_new_check_function, k8s, namespace=namespace)
+run("YOUR NEW CHECK", your_new_check_function, k8s, namespace=namespace)
 ```
 
 It will then run as part of every investigation against a matching target.

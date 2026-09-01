@@ -1,5 +1,6 @@
 from kubernetes.client.rest import ApiException
 
+
 def list_pods(k8s, k8s_rbac=None, namespace: str = "all", show_sa: bool = False) -> str:
     try:
         if namespace == "all":
@@ -12,7 +13,7 @@ def list_pods(k8s, k8s_rbac=None, namespace: str = "all", show_sa: bool = False)
 
         # If show_sa, fetch bindings once for all SA lookups
         crbs = []
-        rbs  = []
+        rbs = []
         if show_sa and k8s_rbac:
             try:
                 crbs = k8s_rbac.list_cluster_role_binding().items
@@ -30,11 +31,11 @@ def list_pods(k8s, k8s_rbac=None, namespace: str = "all", show_sa: bool = False)
         lines = [f"Found {len(pod_list.items)} pod(s):\n"]
 
         for pod in pod_list.items:
-            ns        = pod.metadata.namespace
-            name      = pod.metadata.name
-            phase     = pod.status.phase
-            sa_name   = pod.spec.service_account_name or "default"
-            node      = pod.spec.node_name
+            ns = pod.metadata.namespace
+            name = pod.metadata.name
+            phase = pod.status.phase
+            sa_name = pod.spec.service_account_name or "default"
+            node = pod.spec.node_name
 
             lines.append(f"  {ns}/{name} — {phase} — node: {node}")
             lines.append(f"    serviceAccount: {sa_name}")
@@ -42,26 +43,18 @@ def list_pods(k8s, k8s_rbac=None, namespace: str = "all", show_sa: bool = False)
             if show_sa and k8s_rbac:
                 # Find bindings for this SA
                 sa_crbs = [
-                    crb for crb in crbs
-                    if any(
-                        s.kind == "ServiceAccount" and
-                        s.name == sa_name and
-                        s.namespace == ns
-                        for s in (crb.subjects or [])
-                    )
+                    crb
+                    for crb in crbs
+                    if any(s.kind == "ServiceAccount" and s.name == sa_name and s.namespace == ns for s in (crb.subjects or []))
                 ]
                 sa_rbs = [
-                    rb for rb in rbs
-                    if any(
-                        s.kind == "ServiceAccount" and
-                        s.name == sa_name and
-                        s.namespace == ns
-                        for s in (rb.subjects or [])
-                    )
+                    rb
+                    for rb in rbs
+                    if any(s.kind == "ServiceAccount" and s.name == sa_name and s.namespace == ns for s in (rb.subjects or []))
                 ]
 
                 if not sa_crbs and not sa_rbs:
-                    lines.append(f"    bindings: none")
+                    lines.append("    bindings: none")
                 else:
                     for crb in sa_crbs:
                         flag = " ⚠ CRITICAL" if crb.role_ref.name == "cluster-admin" else ""
@@ -76,6 +69,7 @@ def list_pods(k8s, k8s_rbac=None, namespace: str = "all", show_sa: bool = False)
     except ApiException as e:
         return f"Kubernetes API error: {e.status} {e.reason}"
 
+
 definition = {
     "type": "function",
     "function": {
@@ -89,16 +83,13 @@ definition = {
         "parameters": {
             "type": "object",
             "properties": {
-                "namespace": {
-                    "type": "string",
-                    "description": "Namespace to filter by, or 'all' for every namespace."
-                },
+                "namespace": {"type": "string", "description": "Namespace to filter by, or 'all' for every namespace."},
                 "show_sa": {
                     "type": "boolean",
-                    "description": "Show the ServiceAccount and its RBAC bindings for each pod. Defaults to false."
-                }
+                    "description": "Show the ServiceAccount and its RBAC bindings for each pod. Defaults to false.",
+                },
             },
-            "required": []
-        }
-    }
+            "required": [],
+        },
+    },
 }
