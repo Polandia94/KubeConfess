@@ -1,3 +1,0 @@
-openai==2.38.0
-kubernetes==36.0.1
-rich==15.0.0

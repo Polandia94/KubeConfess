@@ -92,7 +92,7 @@ cd KubeConfess
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 
-pip install -r requirements.txt
+pip install .
 ```
 
 ### Configure
@@ -176,7 +176,7 @@ The scenario: you have shell access inside a pod. No kubeconfig. You want to kno
 export API_KEY=sk-ant-...
 git clone https://github.com/arnavtripathy/KubeConfess.git
 cd KubeConfess
-pip install -r requirements.txt
+pip install .
 python main.py --incluster
 ```
 
@@ -188,7 +188,7 @@ apk add --no-cache python3 py3-pip git
 # clone and install
 git clone https://github.com/arnavtripathy/KubeConfess.git
 cd KubeConfess
-pip3 install -r requirements.txt --break-system-packages
+pip3 install . --break-system-packages
 
 # set API key and run
 export API_KEY=sk-ant-...
@@ -206,7 +206,7 @@ kubectl exec -it <pod> -n <namespace> -- /bin/sh
 # inside
 cd /tmp/kubeconfess
 apk add --no-cache python3 py3-pip
-pip3 install -r requirements.txt --break-system-packages
+pip3 install -r . --break-system-packages
 export API_KEY=sk-ant-...
 python3 main.py --incluster
 ```
@@ -224,7 +224,7 @@ kubectl run kubeconfess \
 # inside
 git clone https://github.com/arnavtripathy/KubeConfess.git
 cd KubeConfess
-pip install -r requirements.txt
+pip install .
 export API_KEY=sk-ant-...
 python main.py --incluster
 ```
