@@ -113,11 +113,7 @@ def harvest_secrets(k8s, namespace: str = "all") -> str:
     total = len(interesting) + len(boring)
 
     if total == 0:
-        return (
-            "No secrets found.\n"
-            "Note: SA tokens are handled by steal_tokens. "
-            "Docker pull secrets and bootstrap tokens are skipped."
-        )
+        return "No secrets found.\nNote: SA tokens are handled by steal_tokens. Docker pull secrets and bootstrap tokens are skipped."
 
     lines = [f"Found {total} secret(s) — {len(interesting)} high priority, {len(boring)} low priority.\n"]
 
@@ -186,9 +182,7 @@ definition = {
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "namespace": {"type": "string", "description": "Namespace to harvest from, or 'all' for cluster-wide."}
-            },
+            "properties": {"namespace": {"type": "string", "description": "Namespace to harvest from, or 'all' for cluster-wide."}},
             "required": [],
         },
     },

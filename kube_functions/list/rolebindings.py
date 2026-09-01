@@ -44,9 +44,7 @@ definition = {
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "namespace": {"type": "string", "description": "Namespace to filter by, or 'all' for every namespace."}
-            },
+            "properties": {"namespace": {"type": "string", "description": "Namespace to filter by, or 'all' for every namespace."}},
             "required": [],
         },
     },

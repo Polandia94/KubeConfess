@@ -206,10 +206,7 @@ definition = {
             "properties": {
                 "namespace": {
                     "type": "string",
-                    "description": (
-                        "Specific namespace to check, or 'all' to auto-discover "
-                        "accessible namespaces and check each one."
-                    ),
+                    "description": ("Specific namespace to check, or 'all' to auto-discover accessible namespaces and check each one."),
                 }
             },
             "required": [],

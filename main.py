@@ -109,12 +109,7 @@ def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages):
     console.print("  [bold green]✓[/bold green] [dim]Data gathered — analysing...[/dim]")
 
     # ── Step 2: send everything to Claude once, no tools ─────────────────────
-    analysis_message = (
-        f"Target: {target}\n\n"
-        f"Here is the raw data gathered from the cluster:\n\n"
-        f"{data}\n\n"
-        f"Write the attack path report."
-    )
+    analysis_message = f"Target: {target}\n\nHere is the raw data gathered from the cluster:\n\n{data}\n\nWrite the attack path report."
 
     with Live(Spinner("dots", text="[dim]analysing...[/dim]"), console=console, transient=True):
         response = ai.chat.completions.create(

@@ -69,9 +69,7 @@ def _secrets_for_pod(k8s, pod_obj) -> str:
     return "\n".join(lines)
 
 
-def list_secrets(
-    k8s, k8s_apps=None, namespace: str = "all", pod: str = None, deployment: str = None, include_system: bool = False
-) -> str:
+def list_secrets(k8s, k8s_apps=None, namespace: str = "all", pod: str = None, deployment: str = None, include_system: bool = False) -> str:
     try:
         # ── Single pod — show secrets it references ───────────────────────────
         if pod:

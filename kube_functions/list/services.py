@@ -44,9 +44,7 @@ definition = {
         "description": "List services in the Kubernetes cluster and which pods they are attached to, optionally filtered by namespace",
         "parameters": {
             "type": "object",
-            "properties": {
-                "namespace": {"type": "string", "description": "Namespace to filter by, or 'all' for every namespace"}
-            },
+            "properties": {"namespace": {"type": "string", "description": "Namespace to filter by, or 'all' for every namespace"}},
             "required": [],
         },
     },

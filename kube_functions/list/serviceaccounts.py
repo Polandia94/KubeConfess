@@ -23,18 +23,14 @@ def list_serviceaccounts(k8s, k8s_rbac, namespace: str = "all") -> str:
 
             # Find RoleBindings for this SA
             sa_rbs = [
-                rb
-                for rb in rbs
-                if any(s.kind == "ServiceAccount" and s.name == name and s.namespace == ns for s in (rb.subjects or []))
+                rb for rb in rbs if any(s.kind == "ServiceAccount" and s.name == name and s.namespace == ns for s in (rb.subjects or []))
             ]
 
             # Find ClusterRoleBindings for this SA
             sa_crbs = [
                 crb
                 for crb in crbs
-                if any(
-                    s.kind == "ServiceAccount" and s.name == name and s.namespace == ns for s in (crb.subjects or [])
-                )
+                if any(s.kind == "ServiceAccount" and s.name == name and s.namespace == ns for s in (crb.subjects or []))
             ]
 
             automount = sa.automount_service_account_token
@@ -46,9 +42,7 @@ def list_serviceaccounts(k8s, k8s_rbac, namespace: str = "all") -> str:
                 lines.append("    bindings: none")
             else:
                 for rb in sa_rbs:
-                    lines.append(
-                        f"    RoleBinding:        {rb.metadata.namespace}/{rb.metadata.name} → {rb.role_ref.name}"
-                    )
+                    lines.append(f"    RoleBinding:        {rb.metadata.namespace}/{rb.metadata.name} → {rb.role_ref.name}")
                 for crb in sa_crbs:
                     is_dangerous = crb.role_ref.name in ("cluster-admin", "admin", "edit")
                     flag = " ⚠ CRITICAL" if crb.role_ref.name == "cluster-admin" else " ⚠" if is_dangerous else ""
@@ -76,9 +70,7 @@ definition = {
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "namespace": {"type": "string", "description": "Namespace to list SAs from, or 'all' for cluster-wide."}
-            },
+            "properties": {"namespace": {"type": "string", "description": "Namespace to list SAs from, or 'all' for cluster-wide."}},
             "required": [],
         },
     },

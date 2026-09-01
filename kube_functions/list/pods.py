@@ -45,18 +45,12 @@ def list_pods(k8s, k8s_rbac=None, namespace: str = "all", show_sa: bool = False)
                 sa_crbs = [
                     crb
                     for crb in crbs
-                    if any(
-                        s.kind == "ServiceAccount" and s.name == sa_name and s.namespace == ns
-                        for s in (crb.subjects or [])
-                    )
+                    if any(s.kind == "ServiceAccount" and s.name == sa_name and s.namespace == ns for s in (crb.subjects or []))
                 ]
                 sa_rbs = [
                     rb
                     for rb in rbs
-                    if any(
-                        s.kind == "ServiceAccount" and s.name == sa_name and s.namespace == ns
-                        for s in (rb.subjects or [])
-                    )
+                    if any(s.kind == "ServiceAccount" and s.name == sa_name and s.namespace == ns for s in (rb.subjects or []))
                 ]
 
                 if not sa_crbs and not sa_rbs:

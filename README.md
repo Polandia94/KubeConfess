@@ -351,9 +351,7 @@ def list_nodes(k8s) -> str:
 
         lines = [f"Found {len(nodes.items)} node(s):\n"]
         for node in nodes.items:
-            status = (
-                "Ready" if any(c.type == "Ready" and c.status == "True" for c in node.status.conditions) else "NotReady"
-            )
+            status = "Ready" if any(c.type == "Ready" and c.status == "True" for c in node.status.conditions) else "NotReady"
             lines.append(f"  {node.metadata.name} — {status}")
         return "\n".join(lines)
 
