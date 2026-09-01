@@ -6,7 +6,7 @@ from kube_functions.security.pod_self_scan   import scan_current_pod,        def
 
 definitions = [privileged_def, root_def, hostpath_def,self_scan_def]  
 
-def dispatch(name: str, args: dict, k8s=None, k8s_apps=None) -> str:
+def dispatch(name: str, args: dict, k8s=None, k8s_apps=None) -> str | None:
     if name == "check_privileged_pods":
         return check_privileged_pods(k8s, k8s_apps, **args)
     if name == "check_root_containers":

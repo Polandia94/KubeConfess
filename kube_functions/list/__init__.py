@@ -15,7 +15,7 @@ from kube_functions.list.clusterrolebindings import list_clusterrolebindings, de
 
 definitions = [pods_def, deployments_def, namespaces_def, services_def, permissions_def, roles_def, clusterroles_def,secrets_def, sa_def, rolebindings_def, crb_def]
 
-def dispatch(name: str, args: dict, k8s=None, k8s_apps=None, k8s_auth=None, k8s_rbac=None) -> str:
+def dispatch(name: str, args: dict, k8s=None, k8s_apps=None, k8s_auth=None, k8s_rbac=None) -> str | None:
     if name == "list_pods":
         return list_pods(k8s, k8s_rbac=k8s_rbac, **args)
     if name == "list_deployments":                        

@@ -108,7 +108,7 @@ def list_permissions(k8s_auth: client.AuthorizationV1Api,
                      namespace: str = "all") -> str:
     try:
         allowed_cluster = []
-        allowed_by_ns   = {}  # namespace → list of allowed permissions
+        allowed_by_ns: dict[str, list] = {}  # namespace → list of allowed permissions
         denied          = []
 
         # ── Step 1: cluster-scoped check ─────────────────────────────────────

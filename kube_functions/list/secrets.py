@@ -23,7 +23,7 @@ def _secrets_for_pod(k8s, pod_obj) -> str:
     """Extract secrets a pod has access to via env vars and volume mounts."""
     ns   = pod_obj.metadata.namespace
     name = pod_obj.metadata.name
-    found = {}
+    found: dict[str, list] = {}
 
     for container in pod_obj.spec.containers:
         # Secrets injected as env vars
