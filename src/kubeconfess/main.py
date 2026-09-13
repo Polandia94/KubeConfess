@@ -1,5 +1,6 @@
 import argparse
 import os
+
 from openai import OpenAI
 from rich import box
 from rich.console import Console
@@ -94,10 +95,11 @@ def send_with_spinner(messages, k8s, k8s_apps, k8s_auth, k8s_rbac, prompt):
 
 def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages, incluster: bool = False):
     import json
-    import zipfile
     import webbrowser
-    from datetime import datetime
-    from kubeconfess.kube_functions.graph import extract_graph, strip_graph_block, render_graph
+    import zipfile
+    from datetime import datetime, timezone
+
+    from kubeconfess.kube_functions.graph import extract_graph, render_graph, strip_graph_block
 
     # ── Step 1: gather ────────────────────────────────────────────────────
     with Live(console=console, transient=True) as live:
@@ -109,7 +111,7 @@ def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages, inclust
                       on_step=on_step, incluster=incluster)
 
     console.print(
-        f"  [bold green]✓[/bold green] [dim]Data gathered — analysing...[/dim]"
+        "  [bold green]✓[/bold green] [dim]Data gathered — analysing...[/dim]"
     )
 
     # ── Step 2: analyse ───────────────────────────────────────────────────
@@ -141,7 +143,7 @@ def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages, inclust
     messages.append({"role": "assistant", "content": reply})
 
     # ── Step 4: save bundle ───────────────────────────────────────────────
-    timestamp   = datetime.now().strftime("%Y%m%d-%H%M%S")
+    timestamp   = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
     safe_target = target.replace("/", "-").replace(" ", "_")
     bundle_name = f"kubeconfess-{safe_target}-{timestamp}"
     zip_path    = f"/tmp/{bundle_name}.zip"
@@ -181,10 +183,10 @@ def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages, inclust
             render_graph(graph, output=preview)
             webbrowser.open(f"file://{os.path.abspath(preview)}")
             console.print(
-                f"  [bold green]✓[/bold green] "
-                f"Graph opened in browser"
+                "  [bold green]✓[/bold green] "
+                "Graph opened in browser"
             )
-        except Exception:
+        except (OSError, ImportError):
             pass
     else:
         console.print(
