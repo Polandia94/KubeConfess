@@ -4,35 +4,36 @@ import re
 # ── Colour scheme ─────────────────────────────────────────────────────────────
 
 NODE_COLOURS = {
-    "Pod":                "#e74c3c",  # red — entry point, primary target
-    "ServiceAccount":     "#e67e22",  # orange — identity, privilege carrier
-    "Role":               "#f39c12",  # yellow — namespace-scoped permissions
-    "ClusterRole":        "#c0392b",  # dark red — cluster-wide permissions, high value
-    "RoleBinding":        "#3498db",  # blue — namespace-scoped binding
+    "Pod": "#e74c3c",  # red — entry point, primary target
+    "ServiceAccount": "#e67e22",  # orange — identity, privilege carrier
+    "Role": "#f39c12",  # yellow — namespace-scoped permissions
+    "ClusterRole": "#c0392b",  # dark red — cluster-wide permissions, high value
+    "RoleBinding": "#3498db",  # blue — namespace-scoped binding
     "ClusterRoleBinding": "#9b59b6",  # purple — cluster-wide binding, dangerous
-    "Secret":             "#2ecc71",  # green — credentials, tokens, keys
-    "Permission":         "#95a5a6",  # grey — individual verb/resource allow
-    "Namespace":          "#1abc9c",  # teal — scope boundary
+    "Secret": "#2ecc71",  # green — credentials, tokens, keys
+    "Permission": "#95a5a6",  # grey — individual verb/resource allow
+    "Namespace": "#1abc9c",  # teal — scope boundary
 }
 
 SEVERITY_BORDER = {
     "CRITICAL": "#ff0000",
-    "HIGH":     "#ff6600",
-    "MEDIUM":   "#ffcc00",
-    "LOW":      "#00cc00",
-    "NONE":     "#444444",
+    "HIGH": "#ff6600",
+    "MEDIUM": "#ffcc00",
+    "LOW": "#00cc00",
+    "NONE": "#444444",
 }
 
 SEVERITY_SIZE = {
     "CRITICAL": 32,
-    "HIGH":     26,
-    "MEDIUM":   20,
-    "LOW":      16,
-    "NONE":     14,
+    "HIGH": 26,
+    "MEDIUM": 20,
+    "LOW": 16,
+    "NONE": 14,
 }
 
 
 # ── Parsing ───────────────────────────────────────────────────────────────────
+
 
 def extract_graph(reply: str) -> dict | None:
     """Extract graph JSON block from Claude's response."""
@@ -50,12 +51,11 @@ def extract_graph(reply: str) -> dict | None:
 
 def strip_graph_block(reply: str) -> str:
     """Remove graph block from response before displaying to user."""
-    return re.sub(
-        r"```graph\s*.*?```", "", reply, flags=re.DOTALL
-    ).strip()
+    return re.sub(r"```graph\s*.*?```", "", reply, flags=re.DOTALL).strip()
 
 
 # ── D3.js renderer ────────────────────────────────────────────────────────────
+
 
 def render_graph(graph: dict, output: str = "/tmp/attack_graph.html") -> str | None:
     """
@@ -70,33 +70,34 @@ def render_graph(graph: dict, output: str = "/tmp/attack_graph.html") -> str | N
     nodes = []
     for node in graph["nodes"]:
         node_type = node.get("type", "Unknown")
-        severity  = node.get("severity", "NONE")
-        nodes.append({
-            "id":       node["id"],
-            "label":    node.get("label", node["id"]),
-            "type":     node_type,
-            "severity": severity,
-            "color":    NODE_COLOURS.get(node_type, "#ffffff"),
-            "border":   SEVERITY_BORDER.get(severity, "#444444"),
-            "size":     SEVERITY_SIZE.get(severity, 14),
-        })
+        severity = node.get("severity", "NONE")
+        nodes.append(
+            {
+                "id": node["id"],
+                "label": node.get("label", node["id"]),
+                "type": node_type,
+                "severity": severity,
+                "color": NODE_COLOURS.get(node_type, "#ffffff"),
+                "border": SEVERITY_BORDER.get(severity, "#444444"),
+                "size": SEVERITY_SIZE.get(severity, 14),
+            }
+        )
 
     edges = []
     for edge in graph.get("edges", []):
-        edges.append({
-            "source": edge["from"],
-            "target": edge["to"],
-            "label":  edge.get("label", ""),
-        })
+        edges.append(
+            {
+                "source": edge["from"],
+                "target": edge["to"],
+                "label": edge.get("label", ""),
+            }
+        )
 
     nodes_json = json.dumps(nodes, indent=2)
     edges_json = json.dumps(edges, indent=2)
 
     legend_items = "\n".join(
-        f'<div class="legend-item">'
-        f'<span class="legend-dot" style="background:{colour}"></span>'
-        f'<span>{node_type}</span>'
-        f'</div>'
+        f'<div class="legend-item"><span class="legend-dot" style="background:{colour}"></span><span>{node_type}</span></div>'
         for node_type, colour in NODE_COLOURS.items()
     )
 
