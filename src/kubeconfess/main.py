@@ -92,7 +92,7 @@ def send_with_spinner(messages, k8s, k8s_apps, k8s_auth, k8s_rbac, prompt):
         return send(messages, k8s, k8s_apps, k8s_auth, k8s_rbac, system_prompt=prompt, on_tool_call=on_tool)
 
 
-def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages):
+def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages, incluster: bool = False):
     import json
     import zipfile
     import webbrowser
@@ -106,7 +106,7 @@ def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages):
                 Spinner("dots", text=f"[dim]gathering: {label}[/dim]")
             )
         data = gather(target, k8s, k8s_apps, k8s_auth, k8s_rbac,
-                      on_step=on_step)
+                      on_step=on_step, incluster=incluster)
 
     console.print(
         f"  [bold green]✓[/bold green] [dim]Data gathered — analysing...[/dim]"
@@ -246,7 +246,7 @@ def main():
             target = parse_investigate(user_input)
             if target:
                 console.print(f"\n  [bold red]⚡[/bold red] Investigating: [cyan]{target}[/cyan]\n")
-                reply = run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages)
+                reply = run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages, incluster=args.incluster)
                 print_reply(reply, investigate=True)
                 continue
 

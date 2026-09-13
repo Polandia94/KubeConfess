@@ -50,7 +50,7 @@ def _section(title: str, content: str) -> str:
     return f"\n{'=' * 50}\n{title}\n{'=' * 50}\n{content}\n"
 
 
-def gather(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, on_step=None) -> str:
+def gather(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, on_step=None, incluster: bool = False) -> str:
     """
     Run all checks against the target and return a single string
     with all findings concatenated. This goes to Claude as one message.
@@ -68,7 +68,8 @@ def gather(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, on_step=None) -> str:
         results.append(_section(label, result))
 
     # ── Always run ────────────────────────────────────────────────────────────
-    run("PERMISSIONS (what can this identity do?)", list_permissions, k8s_auth, namespace=namespace)
+    if incluster:
+        run("PERMISSIONS (what can this identity do?)", list_permissions, k8s_auth, namespace=namespace)
 
     run("SERVICE ACCOUNTS + BINDINGS", list_serviceaccounts, k8s, k8s_rbac, namespace=namespace)
 
