@@ -6,15 +6,15 @@ import os
 # ── Colour scheme ─────────────────────────────────────────────────────────────
 
 NODE_COLOURS = {
-    "Pod":                "#e74c3c",
-    "ServiceAccount":     "#e67e22",
-    "Role":               "#f39c12",
-    "ClusterRole":        "#c0392b",
-    "RoleBinding":        "#3498db",
-    "ClusterRoleBinding": "#9b59b6",
-    "Secret":             "#2ecc71",
-    "Permission":         "#95a5a6",
-    "Namespace":          "#1abc9c",
+    "Pod":                "#e74c3c",  # red — entry point, primary target
+    "ServiceAccount":     "#e67e22",  # orange — identity, privilege carrier
+    "Role":               "#f39c12",  # yellow — namespace-scoped permissions
+    "ClusterRole":        "#c0392b",  # dark red — cluster-wide permissions, high value
+    "RoleBinding":        "#3498db",  # blue — namespace-scoped binding
+    "ClusterRoleBinding": "#9b59b6",  # purple — cluster-wide binding, dangerous
+    "Secret":             "#2ecc71",  # green — credentials, tokens, keys
+    "Permission":         "#95a5a6",  # grey — individual verb/resource allow
+    "Namespace":          "#1abc9c",  # teal — scope boundary
 }
 
 SEVERITY_BORDER = {
