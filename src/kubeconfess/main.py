@@ -130,6 +130,8 @@ def run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages, inclust
         )
 
     full_reply = response.choices[0].message.content
+    if full_reply is None:
+        return "No response from model."
 
     # ── Step 3: extract graph, clean reply ────────────────────────────────
     graph = extract_graph(full_reply)
