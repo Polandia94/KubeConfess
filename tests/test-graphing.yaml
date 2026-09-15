@@ -1,0 +1,393 @@
+# ── Namespace ─────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-graphing
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# SECRETS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-credentials
+  namespace: test-graphing
+type: Opaque
+stringData:
+  username: "app_user"
+  password: "db_p4ssw0rd_s3cr3t"
+  connection_string: "postgresql://app_user:db_p4ssw0rd@db.internal:5432/appdb"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-keys
+  namespace: test-graphing
+type: Opaque
+stringData:
+  stripe_key: "sk_live_test_xxxxxxxxxxxx"
+  sendgrid_key: "SG.xxxxxxxxxxxxxxxxxxxx"
+  internal_token: "int_tok_sup3r_s3cr3t"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-config
+  namespace: test-graphing
+type: Opaque
+stringData:
+  log_level: "info"
+  feature_flags: "new_ui=true,beta=false"
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# SERVICE ACCOUNTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# SA 1 — backend app, can read secrets and exec into pods
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-backend
+  namespace: test-graphing
+
+---
+# SA 2 — frontend app, minimal permissions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-frontend
+  namespace: test-graphing
+
+---
+# SA 3 — worker, can patch deployments
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-worker
+  namespace: test-graphing
+
+---
+# SA 4 — monitoring, read-only
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-monitoring
+  namespace: test-graphing
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# ROLES — namespace scoped only, no ClusterRoles
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Role 1 — backend: secret read + pod exec + deployment read
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: backend-role
+  namespace: test-graphing
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/exec", "pods/log"]
+    verbs: ["get", "list", "create"]
+  - apiGroups: [""]
+    resources: ["configmaps", "services"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list"]
+
+---
+# Role 2 — frontend: read only pods and services
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: frontend-role
+  namespace: test-graphing
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps"]
+    verbs: ["get", "list"]
+
+---
+# Role 3 — worker: patch deployments + read secrets
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: worker-role
+  namespace: test-graphing
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+
+---
+# Role 4 — monitoring: read everything, touch nothing
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: monitoring-role
+  namespace: test-graphing
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "serviceaccounts"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings"]
+    verbs: ["get", "list"]
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# ROLEBINDINGS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backend-binding
+  namespace: test-graphing
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: backend-role
+subjects:
+  - kind: ServiceAccount
+    name: sa-backend
+    namespace: test-graphing
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: frontend-binding
+  namespace: test-graphing
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: frontend-role
+subjects:
+  - kind: ServiceAccount
+    name: sa-frontend
+    namespace: test-graphing
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: worker-binding
+  namespace: test-graphing
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: worker-role
+subjects:
+  - kind: ServiceAccount
+    name: sa-worker
+    namespace: test-graphing
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: monitoring-binding
+  namespace: test-graphing
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: monitoring-role
+subjects:
+  - kind: ServiceAccount
+    name: sa-monitoring
+    namespace: test-graphing
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# PODS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Pod 1 — backend, secrets in env, no securityContext
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-backend
+  namespace: test-graphing
+  labels:
+    app: backend
+spec:
+  serviceAccountName: sa-backend
+  containers:
+    - name: app
+      image: alpine:latest
+      command: ["/bin/sh", "-c", "sleep 86400"]
+      env:
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: password
+        - name: DB_CONNECTION
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: connection_string
+        - name: STRIPE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-keys
+              key: stripe_key
+
+---
+# Pod 2 — frontend, clean, non-root
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-frontend
+  namespace: test-graphing
+  labels:
+    app: frontend
+spec:
+  serviceAccountName: sa-frontend
+  containers:
+    - name: app
+      image: alpine:latest
+      command: ["/bin/sh", "-c", "sleep 86400"]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        allowPrivilegeEscalation: false
+
+---
+# Pod 3 — worker, hostpath mount
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-worker
+  namespace: test-graphing
+  labels:
+    app: worker
+spec:
+  serviceAccountName: sa-worker
+  containers:
+    - name: app
+      image: alpine:latest
+      command: ["/bin/sh", "-c", "sleep 86400"]
+      env:
+        - name: INTERNAL_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: api-keys
+              key: internal_token
+      volumeMounts:
+        - name: host-tmp
+          mountPath: /host-tmp
+  volumes:
+    - name: host-tmp
+      hostPath:
+        path: /tmp
+        type: Directory
+
+---
+# Pod 4 — monitoring, hardened
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-monitoring
+  namespace: test-graphing
+  labels:
+    app: monitoring
+spec:
+  serviceAccountName: sa-monitoring
+  containers:
+    - name: app
+      image: alpine:latest
+      command: ["/bin/sh", "-c", "sleep 86400"]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# DEPLOYMENTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Deployment 1 — backend api, no securityContext, secrets in env
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-api
+  namespace: test-graphing
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend-api
+  template:
+    metadata:
+      labels:
+        app: backend-api
+    spec:
+      serviceAccountName: sa-backend
+      containers:
+        - name: api
+          image: alpine:latest
+          command: ["/bin/sh", "-c", "sleep 86400"]
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+            - name: STRIPE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-keys
+                  key: stripe_key
+
+---
+# Deployment 2 — worker, can be patched by sa-worker
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-service
+  namespace: test-graphing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker-service
+  template:
+    metadata:
+      labels:
+        app: worker-service
+    spec:
+      serviceAccountName: sa-worker
+      containers:
+        - name: worker
+          image: alpine:latest
+          command: ["/bin/sh", "-c", "sleep 86400"]
+          env:
+            - name: INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: api-keys
+                  key: internal_token

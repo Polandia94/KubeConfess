@@ -160,6 +160,8 @@ def list_permissions(k8s_auth: client.AuthorizationV1Api, k8s: client.CoreV1Api 
 
         if "* *" in allowed_cluster:
             lines.append("⚠ [CLUSTER-ADMIN] Wildcard permissions — full cluster access\n")
+        else:
+            lines.append("✓ No wildcard permissions — not cluster-admin\n")
 
         lines.append(f"Checked {len(CHECKS)} permission(s)\n")
 
