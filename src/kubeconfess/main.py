@@ -1,5 +1,10 @@
 import argparse
+import os
+import json
+import webbrowser
+import zipfile
 
+from datetime import datetime, timezone
 from openai import OpenAI
 from rich import box
 from rich.console import Console
@@ -11,6 +16,7 @@ from rich.text import Text
 from kubeconfess.agent import send
 from kubeconfess.config.vars import API_KEY, BASE_URL, MAX_TOKENS, MODEL_NAME
 from kubeconfess.kube_functions.connector import connect
+from kubeconfess.kube_functions.graph import extract_graph, render_graph, strip_graph_block
 from kubeconfess.kube_functions.investigate import gather
 from kubeconfess.kube_functions.prompts import ANALYSE_PROMPT, SYSTEM_PROMPT
 
@@ -92,24 +98,29 @@ def send_with_spinner(messages: list[dict], k8s, k8s_apps, k8s_auth, k8s_rbac, p
         return send(messages, k8s, k8s_apps, k8s_auth, k8s_rbac, system_prompt=prompt, on_tool_call=on_tool)
 
 
-def run_investigate(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, messages: list[dict]) -> str:
+def run_investigate(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, messages: list[dict], incluster: bool = False) -> str:
     """
     Gather all data with fixed tool calls (no AI loop),
     then send to Claude once for analysis.
     """
 
-    # ── Step 1: gather data with progress display ─────────────────────────────
+    # ── Step 1: gather ────────────────────────────────────────────────────
     with Live(console=console, transient=True) as live:
 
         def on_step(label: str) -> None:
             live.update(Spinner("dots", text=f"[dim]gathering: {label}[/dim]"))
 
-        data = gather(target, k8s, k8s_apps, k8s_auth, k8s_rbac, on_step=on_step)
+        data = gather(target, k8s, k8s_apps, k8s_auth, k8s_rbac, on_step=on_step, incluster=incluster)
 
     console.print("  [bold green]✓[/bold green] [dim]Data gathered — analysing...[/dim]")
 
-    # ── Step 2: send everything to Claude once, no tools ─────────────────────
-    analysis_message = f"Target: {target}\n\nHere is the raw data gathered from the cluster:\n\n{data}\n\nWrite the attack path report."
+    # ── Step 2: analyse ───────────────────────────────────────────────────
+    analysis_message = (
+        f"Target: {target}\n\n"
+        f"Here is the raw data gathered from the cluster:\n\n"
+        f"{data}\n\n"
+        f"Write the attack path report and the graph JSON block."
+    )
 
     with Live(Spinner("dots", text="[dim]analysing...[/dim]"), console=console, transient=True):
         response = ai.chat.completions.create(
@@ -119,13 +130,56 @@ def run_investigate(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, messages: li
                 {"role": "system", "content": ANALYSE_PROMPT},
                 {"role": "user", "content": analysis_message},
             ],
-            # no tools= — Claude cannot call tools here, must write report
         )
 
-    reply = response.choices[0].message.content or ""
-    # Add to conversation history so follow-ups are grounded in the findings
+
+    full_reply = response.choices[0].message.content
+    if full_reply is None:
+        return "No response from model."
+
+    # ── Step 3: extract graph, clean reply ────────────────────────────────
+    graph = extract_graph(full_reply)
+    reply = strip_graph_block(full_reply)
+
     messages.append({"role": "user", "content": analysis_message})
     messages.append({"role": "assistant", "content": reply})
+
+    # ── Step 4: save bundle ───────────────────────────────────────────────
+    timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
+    safe_target = target.replace("/", "-").replace(" ", "_")
+    bundle_name = f"kubeconfess-{safe_target}-{timestamp}"
+    zip_path = f"/tmp/{bundle_name}.zip"
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        # report.txt
+        zf.writestr(f"{bundle_name}/report.txt", reply)
+
+        # graph-data.json
+        if graph:
+            zf.writestr(f"{bundle_name}/graph-data.json", json.dumps(graph, indent=2))
+
+            # attack_graph.html
+            html_tmp = f"/tmp/{bundle_name}.html"
+            path = render_graph(graph, output=html_tmp)
+            if path:
+                zf.write(path, f"{bundle_name}/attack_graph.html")
+                os.remove(path)
+
+    console.print(f"\n  [bold green]✓[/bold green] Bundle saved: [cyan]{zip_path}[/cyan]")
+
+    # ── Step 5: open graph if external, show copy command if in-cluster ───
+    in_cluster = os.path.exists("/var/run/secrets/kubernetes.io/serviceaccount/token")
+
+    if not in_cluster and graph:
+        try:
+            preview = f"/tmp/{bundle_name}-preview.html"
+            render_graph(graph, output=preview)
+            webbrowser.open(f"file://{os.path.abspath(preview)}")
+            console.print("  [bold green]✓[/bold green] Graph opened in browser")
+        except (OSError, ImportError):
+            pass
+    else:
+        console.print(f"\n  [dim]Retrieve from pod:[/dim]\n  kubectl cp <namespace>/<pod>:{zip_path} ./{bundle_name}.zip")
 
     return reply
 
@@ -179,7 +233,7 @@ def main() -> None:
             target = parse_investigate(user_input)
             if target:
                 console.print(f"\n  [bold red]⚡[/bold red] Investigating: [cyan]{target}[/cyan]\n")
-                reply = run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages)
+                reply = run_investigate(target, k8s, k8s_apps, k8s_auth, k8s_rbac, messages, incluster=args.incluster)
                 print_reply(reply, investigate=True)
                 continue
 
