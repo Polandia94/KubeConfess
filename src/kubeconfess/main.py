@@ -1,10 +1,10 @@
 import argparse
-import os
 import json
+import os
 import webbrowser
 import zipfile
-
 from datetime import datetime, timezone
+
 from openai import OpenAI
 from rich import box
 from rich.console import Console
@@ -131,7 +131,6 @@ def run_investigate(target: str, k8s, k8s_apps, k8s_auth, k8s_rbac, messages: li
                 {"role": "user", "content": analysis_message},
             ],
         )
-
 
     full_reply = response.choices[0].message.content
     if full_reply is None:
